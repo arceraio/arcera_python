@@ -1,0 +1,23 @@
+# Virtual environment
+venv/
+
+# Model weights (large files)
+*.pt
+*.pth
+
+# Uploaded images
+uploads/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# YOLO run outputs
+runs/
+
+# Environment variables
+.env
+
+# OS
+.DS_Store

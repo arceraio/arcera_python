@@ -11,6 +11,10 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 uploaded_file_path = {"path": None}
 
+@app.route('/', methods=['GET'])
+def health():
+    return jsonify({"status": "ok", "message": "Arcera YOLO API is running"})
+
 @app.route('/upload', methods=['POST'])
 def upload():
     if 'image' not in request.files:

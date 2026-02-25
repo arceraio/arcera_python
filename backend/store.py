@@ -1,0 +1,64 @@
+import sqlite3
+import os
+from datetime import datetime, timezone
+
+DB_PATH = os.path.join(os.path.dirname(__file__), '..', 'arcera.db')
+
+def get_conn():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+def init_db():
+    with get_conn() as conn:
+        conn.execute("CREATE TABLE IF NOT EXISTS users (member_id TEXT PRIMARY KEY)")
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS items (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                member_id       TEXT    NOT NULL REFERENCES users(member_id),
+                class_id        INTEGER NOT NULL,
+                purchase_year   INTEGER,
+                cost            REAL,
+                count           INTEGER NOT NULL DEFAULT 1,
+                filepath        TEXT,
+                room_id         INTEGER,
+                created_at      TEXT    NOT NULL,
+                modified_at     TEXT    NOT NULL
+            )
+        """)
+        conn.commit()
+
+def create_item(member_id: str, class_id: int, purchase_year: int, cost: float, filepath: str, room_id: int):
+    now = datetime.now(timezone.utc).isoformat()
+    with get_conn() as conn:
+        cursor = conn.execute(
+            """INSERT INTO items (member_id, class_id, purchase_year, cost, filepath, room_id, created_at, modified_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            (member_id, class_id, purchase_year, cost, filepath, room_id, now, now)
+        )
+        conn.commit()
+        return cursor.lastrowid
+
+
+def update_item(item_id: int, purchase_year: int = None, cost: float = None):
+    now = datetime.now(timezone.utc).isoformat()
+    with get_conn() as conn:
+        if purchase_year is not None:
+            conn.execute("UPDATE items SET purchase_year = ?, modified_at = ? WHERE id = ?",
+                         (purchase_year, now, item_id))
+        if cost is not None:
+            conn.execute("UPDATE items SET cost = ?, modified_at = ? WHERE id = ?",
+                         (cost, now, item_id))
+        conn.execute("UPDATE items SET count = count + 1, modified_at = ? WHERE id = ?",
+                     (now, item_id))
+        conn.commit()
+
+
+def upsert_user(member_id: str):
+    with get_conn() as conn:
+        conn.execute(
+            "INSERT OR IGNORE INTO users (member_id) VALUES (?)",
+            (member_id,)
+        )
+        conn.commit()
+    return member_id

@@ -15,29 +15,35 @@
   </style>
 </head>
 <body>
-  <h1>YOLO Object Detector</h1>
+  <h1>Arcera Item Scanner</h1>
 
   <div class="step">
-    <label>1. Upload Image</label>
+    <label>1. Select Image</label>
     <input type="file" id="fileInput" accept="image/*" />
     <br/><br/>
-    <button onclick="uploadImage()">Upload</button>
+    <button onclick="uploadImage()">Upload Image</button>
   </div>
 
   <div class="step">
-    <label>2. Validate</label>
+    <label>2. Validate Image</label>
     <button onclick="validateImage()">Validate</button>
   </div>
 
   <div class="step">
-    <label>3. Detect</label>
-    <button onclick="detectObjects()">Detect</button>
+    <label>3. Scan Items</label>
+    <button onclick="detectObjects()">Scan</button>
   </div>
 
   <div id="status">Results will appear here...</div>
 
   <script>
-    const API = 'https://arcera-python.onrender.com';
+    const LOCAL = true;  // set to false to use the Render deployment
+    const API = LOCAL ? 'http://localhost:5000' : 'https://arcera-python.onrender.com';
+
+    const ROOMS = [
+      "Living Room", "Bedroom", "Kitchen", "Bathroom",
+      "Dining Room", "Office", "Garage", "Other"
+    ];
 
     async function uploadImage() {
       const file = document.getElementById('fileInput').files[0];
@@ -56,12 +62,15 @@
     }
 
     async function detectObjects() {
-      setStatus('Running detection...');
+      setStatus('Running detection...\n(Check your terminal to enter item details)');
       const res = await fetch(`${API}/detect`, { method: 'POST' });
       const data = await res.json();
       if (data.error) { setStatus(data.error); return; }
       if (data.detections.length === 0) { setStatus('No objects detected.'); return; }
-      const lines = data.detections.map(d => `${d.label} (${d.confidence})`);
+      const lines = data.detections.map(d => {
+        const room = ROOMS[d.room_id - 1] || 'Unknown';
+        return `${d.label} (${d.confidence}) — $${d.cost} | ${d.purchase_year} | ${room}`;
+      });
       setStatus(lines.join('\n'));
     }
 

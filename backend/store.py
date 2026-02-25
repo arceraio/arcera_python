@@ -54,6 +54,14 @@ def update_item(item_id: int, purchase_year: int = None, cost: float = None):
         conn.commit()
 
 
+def verify_member(member_id: str) -> bool:
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT member_id FROM users WHERE member_id = ?", (member_id,)
+        ).fetchone()
+    return row is not None
+
+
 def upsert_user(member_id: str):
     with get_conn() as conn:
         conn.execute(

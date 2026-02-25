@@ -1,7 +1,7 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 import os
-from main import get_image_path, check_file_exists, get_results
+from main import get_image_path, check_file_exists, detect_and_store_items, export_member_items, MEMBER_ID
 
 app = Flask(__name__)
 CORS(app)
@@ -41,8 +41,23 @@ def detect():
     valid, message = check_file_exists(path)
     if not valid:
         return jsonify({"error": message}), 400
-    detections = get_results(path)
+    # member_id = request.headers.get('X-Member-ID', '')  # swap in when Wix auth is live
+    detections = detect_and_store_items(path, MEMBER_ID)
     return jsonify({"detections": detections})
+
+@app.route('/member', methods=['GET'])
+def member():
+    return jsonify({"member_id": MEMBER_ID})
+
+
+@app.route('/export/<member_id>', methods=['GET'])
+def export(member_id):
+    try:
+        csv_path = export_member_items(member_id)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 404
+    return send_file(csv_path, as_attachment=True, download_name=f"{member_id}_items.csv")
+
 
 if __name__ == '__main__':
     app.run(debug=True)

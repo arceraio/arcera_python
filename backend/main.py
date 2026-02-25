@@ -14,8 +14,9 @@ def check_file_exists(path):
         return False, f"Invalid file type '{ext}'. Supported: {', '.join(VALID_EXTENSIONS)}"
     return True, "File is valid."
 
+model = YOLO('yolo12n.pt')
+
 def get_results(path):
-    model = YOLO('yolo12n.pt')
     results = model(path)
     boxes = results[0].boxes
     if not boxes:

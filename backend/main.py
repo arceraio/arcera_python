@@ -74,11 +74,7 @@ def export_member_items(member_id):
     return export_to_csv(member_id)
 
 
-# detect the items in the image and store them in the database
-def detect_and_store_items(path, member_id):
-    if not verify_member(member_id):
-        raise ValueError(f"Member '{member_id}' not found in database.")
-
+def detect_items(path):
     results = model(path)
     boxes = results[0].boxes
     if not boxes:
@@ -89,17 +85,24 @@ def detect_and_store_items(path, member_id):
         class_id = int(box.cls[0])
         label = results[0].names[class_id]
         confidence = round(float(box.conf[0]), 2)
-        purchase_year, cost, room_id = prompt_user_inputs(label)
-
-        create_item(member_id, class_id, purchase_year, cost, path, room_id)
-
         items.append({
             "class_id": class_id,
             "label": label,
             "confidence": confidence,
-            "filepath": path,
-            "purchase_year": purchase_year,
-            "cost": cost,
-            "room_id": room_id,
         })
     return items
+
+
+def store_items(member_id, items, filepath):
+    if not verify_member(member_id):
+        raise ValueError(f"Member '{member_id}' not found in database.")
+
+    for item in items:
+        create_item(
+            member_id,
+            item["class_id"],
+            item["purchase_year"],
+            item["cost"],
+            filepath,
+            item["room_id"],
+        )

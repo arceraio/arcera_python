@@ -1,0 +1,126 @@
+/* ── Responsive sizing tokens ── */
+/* Defaults (mobile-first, < 480px) */
+
+:root {
+  --header-padding: 10px 12px;
+  --content-padding: 16px 12px 90px;
+  --nav-padding: 6px 8px 10px;
+  --logo-svg: 28px;
+  --logo-font: 1rem;
+  --drawer-width: 260px;
+  --hero-padding: 24px 16px;
+  --hero-title-font: 1.05rem;
+  --hero-subtitle-font: 0.82rem;
+  --chip-font: 0.78rem;
+  --grid-columns: repeat(2, 1fr);
+  --grid-gap: 10px;
+  --card-inner-padding: 14px;
+  --card-name-font: 0.88rem;
+  --card-cost-font: 1rem;
+}
+
+/* Small phones (375px+) */
+@media (min-width: 375px) {
+  :root {
+    --header-padding: 12px 16px;
+    --content-padding: 20px 16px 96px;
+    --nav-padding: 8px 12px 12px;
+    --logo-svg: 30px;
+    --logo-font: 1.08rem;
+    --hero-padding: 26px 20px;
+    --hero-title-font: 1.12rem;
+    --hero-subtitle-font: 0.85rem;
+    --chip-font: 0.8rem;
+    --grid-gap: 12px;
+    --card-inner-padding: 16px;
+    --card-name-font: 0.92rem;
+    --card-cost-font: 1.05rem;
+  }
+}
+
+/* Standard phones / large phones (480px+) */
+@media (min-width: 480px) {
+  :root {
+    --header-padding: 14px 24px;
+    --content-padding: 24px 24px 100px;
+    --nav-padding: 8px 16px 14px;
+    --logo-svg: 32px;
+    --logo-font: 1.15rem;
+    --drawer-width: 280px;
+    --hero-padding: 30px 28px;
+    --hero-title-font: 1.2rem;
+    --hero-subtitle-font: 0.88rem;
+    --chip-font: 0.82rem;
+    --grid-columns: repeat(2, 1fr);
+    --grid-gap: 14px;
+    --card-inner-padding: 18px;
+    --card-name-font: 0.95rem;
+    --card-cost-font: 1.1rem;
+  }
+}
+
+/* Tablets (768px+) */
+@media (min-width: 768px) {
+  :root {
+    --header-padding: 16px 32px;
+    --content-padding: 32px 32px 110px;
+    --nav-padding: 10px 24px 16px;
+    --drawer-width: 300px;
+    --hero-padding: 36px 36px;
+    --hero-title-font: 1.35rem;
+    --hero-subtitle-font: 0.92rem;
+    --chip-font: 0.85rem;
+    --grid-columns: repeat(3, 1fr);
+    --grid-gap: 16px;
+    --card-inner-padding: 20px;
+    --card-name-font: 1rem;
+    --card-cost-font: 1.15rem;
+  }
+}
+
+/* Small desktops (1024px+) */
+@media (min-width: 1024px) {
+  :root {
+    --header-padding: 16px 40px;
+    --content-padding: 36px 40px 36px;
+    --drawer-width: 320px;
+    --hero-padding: 40px 44px;
+    --hero-title-font: 1.45rem;
+    --hero-subtitle-font: 0.95rem;
+    --chip-font: 0.88rem;
+    --grid-columns: repeat(4, 1fr);
+    --grid-gap: 18px;
+    --card-inner-padding: 22px;
+    --card-name-font: 1.02rem;
+    --card-cost-font: 1.2rem;
+  }
+}
+
+/* Large desktops (1440px+) */
+@media (min-width: 1440px) {
+  :root {
+    --content-padding: 40px 48px 40px;
+    --header-padding: 18px 48px;
+    --hero-padding: 44px 48px;
+    --hero-title-font: 1.5rem;
+    --grid-gap: 20px;
+    --card-inner-padding: 24px;
+  }
+}
+
+/* ── Apply sizing tokens ── */
+
+.logo svg { width: var(--logo-svg); height: var(--logo-svg); }
+.logo-text { font-size: var(--logo-font); }
+.drawer { width: var(--drawer-width); }
+
+/* ── Navigation visibility ── */
+
+@media (max-width: 768px) {
+  .hamburger-btn { display: none; }
+}
+
+@media (min-width: 769px) {
+  .bottom-nav { display: none; }
+  :root { --content-padding: 32px 32px 32px; }
+}

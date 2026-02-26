@@ -54,6 +54,22 @@ def update_item(item_id: int, purchase_year: int = None, cost: float = None):
         conn.commit()
 
 
+def get_items(member_id: str):
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT id, class_id, purchase_year, cost, count, filepath, room_id, created_at, modified_at "
+            "FROM items WHERE member_id = ? ORDER BY created_at DESC",
+            (member_id,)
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
+def delete_item(item_id: int):
+    with get_conn() as conn:
+        conn.execute("DELETE FROM items WHERE id = ?", (item_id,))
+        conn.commit()
+
+
 def verify_member(member_id: str) -> bool:
     with get_conn() as conn:
         row = conn.execute(

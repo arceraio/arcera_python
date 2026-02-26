@@ -2,94 +2,15 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>YOLO Detector</title>
-  <style>
-    body { font-family: sans-serif; max-width: 600px; margin: 60px auto; padding: 0 20px; }
-    h1 { font-size: 1.5rem; margin-bottom: 24px; }
-    .step { margin-bottom: 20px; }
-    label { display: block; margin-bottom: 6px; font-weight: bold; }
-    button { padding: 10px 20px; background: #111; color: #fff; border: none; border-radius: 6px; cursor: pointer; }
-    button:hover { background: #333; }
-    #status { margin-top: 24px; padding: 14px; background: #f4f4f4; border-radius: 6px; white-space: pre-wrap; min-height: 60px; }
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Arcera</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles/main.css" />
+  <link rel="stylesheet" href="styles/size.css" />
 </head>
 <body>
-  <h1>Arcera Item Scanner</h1>
-
-  <div class="step">
-    <label>1. Select Image</label>
-    <input type="file" id="fileInput" accept="image/*" />
-    <br/><br/>
-    <button onclick="uploadImage()">Upload Image</button>
-  </div>
-
-  <div class="step">
-    <label>2. Validate Image</label>
-    <button onclick="validateImage()">Validate</button>
-  </div>
-
-  <div class="step">
-    <label>3. Scan Items</label>
-    <button onclick="detectObjects()">Scan</button>
-  </div>
-
-  <div class="step">
-    <label>4. Export My Items</label>
-    <button onclick="exportItems()">Download CSV</button>
-  </div>
-
-  <div id="status">Results will appear here...</div>
-
-  <script>
-    const LOCAL = true;  // set to false to use the Render deployment
-    const API = LOCAL ? 'http://localhost:5000' : 'https://arcera-python.onrender.com';
-
-    let memberId = null;
-    fetch(`${API}/member`).then(r => r.json()).then(d => { memberId = d.member_id; });
-
-    const ROOMS = [
-      "Living Room", "Bedroom", "Kitchen", "Bathroom",
-      "Dining Room", "Office", "Garage", "Other"
-    ];
-
-    async function uploadImage() {
-      const file = document.getElementById('fileInput').files[0];
-      if (!file) { setStatus('Please select a file first.'); return; }
-      const form = new FormData();
-      form.append('image', file);
-      const res = await fetch(`${API}/upload`, { method: 'POST', body: form });
-      const data = await res.json();
-      setStatus(data.message || data.error);
-    }
-
-    async function validateImage() {
-      const res = await fetch(`${API}/validate`, { method: 'POST' });
-      const data = await res.json();
-      setStatus(data.message || data.error);
-    }
-
-    async function detectObjects() {
-      setStatus('Running detection...\n(Check your terminal to enter item details)');
-      const res = await fetch(`${API}/detect`, { method: 'POST' });
-      const data = await res.json();
-      if (data.error) { setStatus(data.error); return; }
-      if (data.detections.length === 0) { setStatus('No objects detected.'); return; }
-      const lines = data.detections.map(d => {
-        const room = ROOMS[d.room_id - 1] || 'Unknown';
-        return `${d.label} (${d.confidence}) — $${d.cost} | ${d.purchase_year} | ${room}`;
-      });
-      setStatus(lines.join('\n'));
-    }
-
-    function exportItems() {
-      if (!memberId) { setStatus('Member ID not loaded yet. Try again.'); return; }
-      window.location.href = `${API}/export/${memberId}`;
-    }
-
-    function setStatus(msg) {
-      document.getElementById('status').textContent = msg;
-    }
-  </script>
+  <script type="module" src="app.js"></script>
 </body>
 </html>

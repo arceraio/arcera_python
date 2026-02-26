@@ -1,0 +1,61 @@
+const ROOMS = [
+  "Living Room", "Bedroom", "Kitchen", "Bathroom",
+  "Dining Room", "Office", "Garage", "Other",
+];
+
+export function render(items, activeFilter = 0) {
+  const filtered = activeFilter === 0
+    ? items
+    : items.filter(it => it.room_id === activeFilter);
+
+  const fmt = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 });
+
+  if (items.length === 0) {
+    return `
+      <div class="empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+          <circle cx="12" cy="13" r="4"/>
+        </svg>
+        <p>Start by scanning a room</p>
+        <span>Use the Camera to document your belongings. We\u2019ll keep them safe.</span>
+      </div>
+    `;
+  }
+
+  const roomCounts = {};
+  items.forEach(it => {
+    const rid = it.room_id;
+    if (rid && rid >= 1 && rid <= ROOMS.length) {
+      roomCounts[rid] = (roomCounts[rid] || 0) + 1;
+    }
+  });
+
+  const chips = [`<button class="room-chip${activeFilter === 0 ? ' active' : ''}" data-room="0">All (${items.length})</button>`];
+  Object.keys(roomCounts)
+    .sort((a, b) => roomCounts[b] - roomCounts[a])
+    .forEach(rid => {
+      const id = parseInt(rid);
+      const name = ROOMS[id - 1];
+      chips.push(`<button class="room-chip${activeFilter === id ? ' active' : ''}" data-room="${id}">${name} (${roomCounts[id]})</button>`);
+    });
+
+  const cards = filtered.map(it => `
+    <div class="item-card">
+      <button class="item-card-delete" data-id="${it.id}" aria-label="Remove item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+      <div class="item-card-name">${it.label}</div>
+      <div class="item-card-cost">${it.cost != null ? fmt.format(it.cost) : '\u2014'}</div>
+      <span class="item-card-room">${it.room}</span>
+      <div class="item-card-year">${it.purchase_year || ''}</div>
+    </div>
+  `).join('');
+
+  return `
+    <div class="room-chips">${chips.join('')}</div>
+    <div class="items-grid">${cards}</div>
+  `;
+}

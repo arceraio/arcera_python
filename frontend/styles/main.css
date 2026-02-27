@@ -302,6 +302,27 @@ body {
   transform: translateY(-2px);
 }
 
+.item-card-thumb {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.item-card-thumb-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--gray-100);
+  border-radius: 8px;
+}
+.item-card-thumb-placeholder svg {
+  width: 28px;
+  height: 28px;
+  color: var(--gray-300);
+}
+
 .item-card-name {
   font-size: var(--card-name-font, 0.95rem);
   font-weight: 700;

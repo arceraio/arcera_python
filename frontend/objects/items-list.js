@@ -47,6 +47,15 @@ export function render(items, activeFilter = 0) {
           <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
         </svg>
       </button>
+      ${it.crop_url
+        ? `<img class="item-card-thumb" src="${it.crop_url}" alt="${it.label}" loading="lazy" />`
+        : `<div class="item-card-thumb item-card-thumb-placeholder">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
+              <polyline points="21 15 16 10 5 21"/>
+            </svg>
+           </div>`
+      }
       <div class="item-card-name">${it.label}</div>
       <div class="item-card-cost">${it.cost != null ? fmt.format(it.cost) : '\u2014'}</div>
       <span class="item-card-room">${it.room}</span>

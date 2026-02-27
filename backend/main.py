@@ -1,5 +1,7 @@
 from ultralytics import YOLO
 import os
+import uuid
+from PIL import Image
 from store import init_db, verify_member, create_item
 from export import export_to_csv
 
@@ -68,6 +70,8 @@ def check_file_exists(path):
 
 model = YOLO('yolo12n.pt')
 
+CROPS_BASE = os.path.join(os.path.dirname(__file__), '..', 'uploads', 'crops')
+
 def export_member_items(member_id):
     if not verify_member(member_id):
         raise ValueError(f"Member '{member_id}' not found in database.")
@@ -85,10 +89,12 @@ def detect_items(path):
         class_id = int(box.cls[0])
         label = results[0].names[class_id]
         confidence = round(float(box.conf[0]), 2)
+        x1, y1, x2, y2 = [round(float(v)) for v in box.xyxy[0]]
         items.append({
             "class_id": class_id,
             "label": label,
             "confidence": confidence,
+            "bbox": [x1, y1, x2, y2],
         })
     return items
 
@@ -97,7 +103,20 @@ def store_items(member_id, items, filepath):
     if not verify_member(member_id):
         raise ValueError(f"Member '{member_id}' not found in database.")
 
+    member_crops_dir = os.path.join(CROPS_BASE, member_id)
+    os.makedirs(member_crops_dir, exist_ok=True)
+
+    img = Image.open(filepath)
+
     for item in items:
+        crop_filename = None
+        bbox = item.get("bbox")
+        if bbox:
+            x1, y1, x2, y2 = bbox
+            crop = img.crop((x1, y1, x2, y2))
+            crop_filename = f"{uuid.uuid4().hex}_crop.jpg"
+            crop.save(os.path.join(member_crops_dir, crop_filename), "JPEG")
+
         create_item(
             member_id,
             item["class_id"],
@@ -105,4 +124,9 @@ def store_items(member_id, items, filepath):
             item["cost"],
             filepath,
             item["room_id"],
+            crop_path=crop_filename,
+            x1=bbox[0] if bbox else None,
+            y1=bbox[1] if bbox else None,
+            x2=bbox[2] if bbox else None,
+            y2=bbox[3] if bbox else None,
         )

@@ -1,7 +1,7 @@
-from flask import Flask, request, jsonify, send_file
+from flask import Flask, request, jsonify, send_file, abort
 from flask_cors import CORS
 import os
-from main import get_image_path, check_file_exists, detect_items, store_items, export_member_items, MEMBER_ID, ROOMS, model
+from main import get_image_path, check_file_exists, detect_items, store_items, export_member_items, MEMBER_ID, ROOMS, model, CROPS_BASE
 from store import get_items as db_get_items, delete_item as db_delete_item, update_item as db_update_item
 
 app = Flask(__name__)
@@ -80,6 +80,8 @@ def list_items():
     items = []
     for row in rows:
         room_id = row.get("room_id")
+        crop_filename = row.get("crop_path")
+        crop_url = f"/crops/{MEMBER_ID}/{crop_filename}" if crop_filename else None
         items.append({
             "id": row["id"],
             "label": model.names.get(row["class_id"], f"class_{row['class_id']}"),
@@ -87,9 +89,19 @@ def list_items():
             "cost": row["cost"],
             "room": ROOMS[room_id - 1] if room_id and 1 <= room_id <= len(ROOMS) else "Unknown",
             "room_id": room_id,
+            "crop_url": crop_url,
+            "bbox": [row["x1"], row["y1"], row["x2"], row["y2"]] if row["x1"] is not None else None,
             "created_at": row["created_at"],
         })
     return jsonify({"items": items})
+
+
+@app.route('/crops/<member_id>/<filename>', methods=['GET'])
+def serve_crop(member_id, filename):
+    crop_path = os.path.join(CROPS_BASE, member_id, filename)
+    if not os.path.isfile(crop_path):
+        abort(404)
+    return send_file(crop_path, mimetype='image/jpeg')
 
 
 @app.route('/items/<int:item_id>', methods=['DELETE'])

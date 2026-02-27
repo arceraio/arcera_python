@@ -22,19 +22,35 @@ def init_db():
                 count           INTEGER NOT NULL DEFAULT 1,
                 filepath        TEXT,
                 room_id         INTEGER,
+                crop_path       TEXT,
+                x1              INTEGER,
+                y1              INTEGER,
+                x2              INTEGER,
+                y2              INTEGER,
                 created_at      TEXT    NOT NULL,
                 modified_at     TEXT    NOT NULL
             )
         """)
+        for col, col_type in [
+            ("crop_path", "TEXT"),
+            ("x1", "INTEGER"),
+            ("y1", "INTEGER"),
+            ("x2", "INTEGER"),
+            ("y2", "INTEGER"),
+        ]:
+            try:
+                conn.execute(f"ALTER TABLE items ADD COLUMN {col} {col_type}")
+            except sqlite3.OperationalError:
+                pass  # column already exists
         conn.commit()
 
-def create_item(member_id: str, class_id: int, purchase_year: int, cost: float, filepath: str, room_id: int):
+def create_item(member_id: str, class_id: int, purchase_year: int, cost: float, filepath: str, room_id: int, crop_path: str = None, x1: int = None, y1: int = None, x2: int = None, y2: int = None):
     now = datetime.now(timezone.utc).isoformat()
     with get_conn() as conn:
         cursor = conn.execute(
-            """INSERT INTO items (member_id, class_id, purchase_year, cost, filepath, room_id, created_at, modified_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-            (member_id, class_id, purchase_year, cost, filepath, room_id, now, now)
+            """INSERT INTO items (member_id, class_id, purchase_year, cost, filepath, room_id, crop_path, x1, y1, x2, y2, created_at, modified_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (member_id, class_id, purchase_year, cost, filepath, room_id, crop_path, x1, y1, x2, y2, now, now)
         )
         conn.commit()
         return cursor.lastrowid
@@ -57,7 +73,7 @@ def update_item(item_id: int, purchase_year: int = None, cost: float = None):
 def get_items(member_id: str):
     with get_conn() as conn:
         rows = conn.execute(
-            "SELECT id, class_id, purchase_year, cost, count, filepath, room_id, created_at, modified_at "
+            "SELECT id, class_id, purchase_year, cost, count, filepath, room_id, crop_path, x1, y1, x2, y2, created_at, modified_at "
             "FROM items WHERE member_id = ? ORDER BY created_at DESC",
             (member_id,)
         ).fetchall()

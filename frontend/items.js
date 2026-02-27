@@ -36,7 +36,10 @@ async function loadItems() {
   try {
     const res = await fetch(`${API}/items`);
     const data = await res.json();
-    allItems = data.items || [];
+    allItems = (data.items || []).map(it => ({
+      ...it,
+      crop_url: it.crop_url ? `${API}${it.crop_url}` : null,
+    }));
   } catch {
     allItems = [];
   }

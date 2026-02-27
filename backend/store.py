@@ -27,6 +27,7 @@ def init_db():
                 y1              INTEGER,
                 x2              INTEGER,
                 y2              INTEGER,
+                duplicate_of    INTEGER,
                 created_at      TEXT    NOT NULL,
                 modified_at     TEXT    NOT NULL
             )
@@ -37,6 +38,7 @@ def init_db():
             ("y1", "INTEGER"),
             ("x2", "INTEGER"),
             ("y2", "INTEGER"),
+            ("duplicate_of", "INTEGER"),
         ]:
             try:
                 conn.execute(f"ALTER TABLE items ADD COLUMN {col} {col_type}")
@@ -44,13 +46,24 @@ def init_db():
                 pass  # column already exists
         conn.commit()
 
-def create_item(member_id: str, class_id: int, purchase_year: int, cost: float, filepath: str, room_id: int, crop_path: str = None, x1: int = None, y1: int = None, x2: int = None, y2: int = None):
+
+def find_duplicate(member_id: str, class_id: int, x1: int, y1: int, x2: int, y2: int):
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT id FROM items "
+            "WHERE member_id = ? AND class_id = ? AND x1 = ? AND y1 = ? AND x2 = ? AND y2 = ?",
+            (member_id, class_id, x1, y1, x2, y2)
+        ).fetchone()
+    return row["id"] if row else None
+
+
+def create_item(member_id: str, class_id: int, purchase_year: int, cost: float, filepath: str, room_id: int, crop_path: str = None, x1: int = None, y1: int = None, x2: int = None, y2: int = None, duplicate_of: int = None):
     now = datetime.now(timezone.utc).isoformat()
     with get_conn() as conn:
         cursor = conn.execute(
-            """INSERT INTO items (member_id, class_id, purchase_year, cost, filepath, room_id, crop_path, x1, y1, x2, y2, created_at, modified_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (member_id, class_id, purchase_year, cost, filepath, room_id, crop_path, x1, y1, x2, y2, now, now)
+            """INSERT INTO items (member_id, class_id, purchase_year, cost, filepath, room_id, crop_path, x1, y1, x2, y2, duplicate_of, created_at, modified_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (member_id, class_id, purchase_year, cost, filepath, room_id, crop_path, x1, y1, x2, y2, duplicate_of, now, now)
         )
         conn.commit()
         return cursor.lastrowid
@@ -73,7 +86,7 @@ def update_item(item_id: int, purchase_year: int = None, cost: float = None):
 def get_items(member_id: str):
     with get_conn() as conn:
         rows = conn.execute(
-            "SELECT id, class_id, purchase_year, cost, count, filepath, room_id, crop_path, x1, y1, x2, y2, created_at, modified_at "
+            "SELECT id, class_id, purchase_year, cost, count, filepath, room_id, crop_path, x1, y1, x2, y2, duplicate_of, created_at, modified_at "
             "FROM items WHERE member_id = ? ORDER BY created_at DESC",
             (member_id,)
         ).fetchall()

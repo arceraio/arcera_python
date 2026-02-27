@@ -2,7 +2,7 @@ from ultralytics import YOLO
 import os
 import uuid
 from PIL import Image
-from store import init_db, verify_member, create_item
+from store import init_db, verify_member, create_item, find_duplicate
 from export import export_to_csv
 
 init_db()
@@ -109,10 +109,15 @@ def store_items(member_id, items, filepath):
     img = Image.open(filepath)
 
     for item in items:
-        crop_filename = None
         bbox = item.get("bbox")
+        x1, y1, x2, y2 = bbox if bbox else (None, None, None, None)
+
+        duplicate_of = None
         if bbox:
-            x1, y1, x2, y2 = bbox
+            duplicate_of = find_duplicate(member_id, item["class_id"], x1, y1, x2, y2)
+
+        crop_filename = None
+        if bbox:
             crop = img.crop((x1, y1, x2, y2))
             crop_filename = f"{uuid.uuid4().hex}_crop.jpg"
             crop.save(os.path.join(member_crops_dir, crop_filename), "JPEG")
@@ -125,8 +130,6 @@ def store_items(member_id, items, filepath):
             filepath,
             item["room_id"],
             crop_path=crop_filename,
-            x1=bbox[0] if bbox else None,
-            y1=bbox[1] if bbox else None,
-            x2=bbox[2] if bbox else None,
-            y2=bbox[3] if bbox else None,
+            x1=x1, y1=y1, x2=x2, y2=y2,
+            duplicate_of=duplicate_of,
         )

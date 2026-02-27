@@ -18,7 +18,8 @@ function renderMain() {
 function bindMainEvents() {
   document.querySelectorAll('.room-chip').forEach(chip => {
     chip.addEventListener('click', () => {
-      roomFilter = parseInt(chip.dataset.room);
+      const raw = chip.dataset.room;
+      roomFilter = raw === 'duplicates' ? 'duplicates' : parseInt(raw);
       renderMain();
     });
   });

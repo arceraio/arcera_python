@@ -354,6 +354,32 @@ body {
   margin-top: auto;
 }
 
+.item-card-duplicate {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: #92400E;
+  background: #FEF3C7;
+  padding: 3px 10px;
+  border-radius: 10px;
+  align-self: flex-start;
+}
+
+.room-chip--warning {
+  border-color: #FCD34D;
+  color: #92400E;
+  background: #FEF3C7;
+}
+.room-chip--warning:hover {
+  border-color: #F59E0B;
+  color: #78350F;
+}
+.room-chip--warning.active {
+  background: #F59E0B;
+  color: #fff;
+  border-color: #F59E0B;
+}
+
 .item-card-delete {
   position: absolute;
   top: 12px;

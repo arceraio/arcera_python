@@ -6,7 +6,9 @@ const ROOMS = [
 export function render(items, activeFilter = 0) {
   const filtered = activeFilter === 0
     ? items
-    : items.filter(it => it.room_id === activeFilter);
+    : activeFilter === 'duplicates'
+      ? items.filter(it => it.duplicate_of != null)
+      : items.filter(it => it.room_id === activeFilter);
 
   const fmt = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 });
 
@@ -31,7 +33,12 @@ export function render(items, activeFilter = 0) {
     }
   });
 
+  const duplicateCount = items.filter(it => it.duplicate_of != null).length;
+
   const chips = [`<button class="room-chip${activeFilter === 0 ? ' active' : ''}" data-room="0">All (${items.length})</button>`];
+  if (duplicateCount > 0) {
+    chips.push(`<button class="room-chip room-chip--warning${activeFilter === 'duplicates' ? ' active' : ''}" data-room="duplicates">Duplicates (${duplicateCount})</button>`);
+  }
   Object.keys(roomCounts)
     .sort((a, b) => roomCounts[b] - roomCounts[a])
     .forEach(rid => {
@@ -59,6 +66,7 @@ export function render(items, activeFilter = 0) {
       <div class="item-card-name">${it.label}</div>
       <div class="item-card-cost">${it.cost != null ? fmt.format(it.cost) : '\u2014'}</div>
       <span class="item-card-room">${it.room}</span>
+      ${it.duplicate_of != null ? `<span class="item-card-duplicate">Duplicate of #${it.duplicate_of}</span>` : ''}
       <div class="item-card-year">${it.purchase_year || ''}</div>
     </div>
   `).join('');

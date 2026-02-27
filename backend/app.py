@@ -91,6 +91,7 @@ def list_items():
             "room_id": room_id,
             "crop_url": crop_url,
             "bbox": [row["x1"], row["y1"], row["x2"], row["y2"]] if row["x1"] is not None else None,
+            "duplicate_of": row["duplicate_of"],
             "created_at": row["created_at"],
         })
     return jsonify({"items": items})

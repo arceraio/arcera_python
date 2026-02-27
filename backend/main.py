@@ -118,10 +118,20 @@ def store_items(member_id, items, filepath):
 
         crop_filename = None
         if bbox:
-            crop = img.crop((x1, y1, x2, y2))
+            bbox_area = (x2 - x1) * (y2 - y1)
+            img_area  = img.width * img.height
+            pad_ratio = 1.6 if (bbox_area / img_area) < 0.05 else 1
+            pad_x = int((x2 - x1) * pad_ratio)
+            pad_y = int((y2 - y1) * pad_ratio)
+            cx1 = max(0, x1 - pad_x)
+            cy1 = max(0, y1 - pad_y)
+            cx2 = min(img.width,  x2 + pad_x)
+            cy2 = min(img.height, y2 + pad_y)
+            crop = img.crop((cx1, cy1, cx2, cy2))
             crop_filename = f"{uuid.uuid4().hex}_crop.jpg"
             crop.save(os.path.join(member_crops_dir, crop_filename), "JPEG")
 
+        yolo_label = model.names.get(item["class_id"], f"class_{item['class_id']}")
         create_item(
             member_id,
             item["class_id"],
@@ -129,6 +139,7 @@ def store_items(member_id, items, filepath):
             item["cost"],
             filepath,
             item["room_id"],
+            name=yolo_label,
             crop_path=crop_filename,
             x1=x1, y1=y1, x2=x2, y2=y2,
             duplicate_of=duplicate_of,

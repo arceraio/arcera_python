@@ -3,6 +3,41 @@ const ROOMS = [
   "Dining Room", "Office", "Garage", "Other",
 ];
 
+// COCO class IDs relevant to home inventory (furniture, appliances, electronics, kitchenware)
+const HOUSEHOLD_CLASS_IDS = new Set([
+  39,  // bottle
+  40,  // wine glass
+  41,  // cup
+  42,  // fork
+  43,  // knife
+  44,  // spoon
+  45,  // bowl
+  56,  // chair
+  57,  // couch
+  58,  // potted plant
+  59,  // bed
+  60,  // dining table
+  61,  // toilet
+  62,  // tv
+  63,  // laptop
+  64,  // mouse
+  65,  // remote
+  66,  // keyboard
+  67,  // cell phone
+  68,  // microwave
+  69,  // oven
+  70,  // toaster
+  71,  // sink
+  72,  // refrigerator
+  73,  // book
+  74,  // clock
+  75,  // vase
+  76,  // scissors
+  77,  // teddy bear
+  78,  // hair drier
+  79,  // toothbrush
+]);
+
 const API = 'http://localhost:5000';
 
 let onRefresh = null;
@@ -98,7 +133,7 @@ async function doScan() {
     await fetch(`${API}/upload`, { method: 'POST', body: form });
     const res = await fetch(`${API}/detect`, { method: 'POST' });
     const data = await res.json();
-    detections = data.detections || [];
+    detections = (data.detections || []).filter(d => HOUSEHOLD_CLASS_IDS.has(d.class_id));
   } catch {
     setBody(`
       <div class="camera-scanning">
@@ -113,9 +148,50 @@ async function doScan() {
   showReviewScreen(detections);
 }
 
+/* ── Crop helper ── */
+
+function cropDetections(file, detections) {
+  return new Promise(resolve => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const imgArea = img.naturalWidth * img.naturalHeight;
+      const urls = detections.map(d => {
+        if (!d.bbox) return null;
+        const [x1, y1, x2, y2] = d.bbox;
+        const bw = x2 - x1, bh = y2 - y1;
+        if (bw <= 0 || bh <= 0) return null;
+
+        const bboxArea = bw * bh;
+        const padRatio = (bboxArea / imgArea) < 0.05 ? 1.6 : 1;
+        const px = Math.round(bw * padRatio);
+        const py = Math.round(bh * padRatio);
+        const cx1 = Math.max(0, x1 - px);
+        const cy1 = Math.max(0, y1 - py);
+        const cx2 = Math.min(img.naturalWidth,  x2 + px);
+        const cy2 = Math.min(img.naturalHeight, y2 + py);
+        const cw = cx2 - cx1, ch = cy2 - cy1;
+
+        const canvas = document.createElement('canvas');
+        canvas.width = cw;
+        canvas.height = ch;
+        canvas.getContext('2d').drawImage(img, cx1, cy1, cw, ch, 0, 0, cw, ch);
+        return canvas.toDataURL('image/jpeg', 0.85);
+      });
+      URL.revokeObjectURL(url);
+      resolve(urls);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(detections.map(() => null));
+    };
+    img.src = url;
+  });
+}
+
 /* ── Step 3: Review detections ── */
 
-function showReviewScreen(detections) {
+async function showReviewScreen(detections) {
   if (detections.length === 0) {
     setBody(`
       <div class="camera-scanning">
@@ -128,12 +204,15 @@ function showReviewScreen(detections) {
     return;
   }
 
+  const cropUrls = await cropDetections(currentFile, detections);
+
   const roomOptions = ROOMS.map((r, i) =>
     `<option value="${i + 1}">${r}</option>`
   ).join('');
 
-  const rows = detections.map(d => `
-    <div class="camera-item-row" data-class-id="${d.class_id}">
+  const rows = detections.map((d, i) => `
+    <div class="camera-item-row" data-class-id="${d.class_id}" data-bbox="${JSON.stringify(d.bbox || null)}">
+      ${cropUrls[i] ? `<img class="camera-item-thumb" src="${cropUrls[i]}" alt="${d.label}">` : ''}
       <div class="camera-item-header">
         <div>
           <span class="camera-item-name">${d.label}</span>
@@ -199,6 +278,7 @@ async function doStore() {
     purchase_year: parseInt(row.querySelector('[name="year"]').value) || null,
     cost: parseFloat(row.querySelector('[name="cost"]').value) || null,
     room_id: parseInt(row.querySelector('[name="room"]').value),
+    bbox: JSON.parse(row.dataset.bbox || 'null'),
   }));
 
   setBody(`

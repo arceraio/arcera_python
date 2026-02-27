@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify, send_file, abort
 from flask_cors import CORS
 import os
 from main import get_image_path, check_file_exists, detect_items, store_items, export_member_items, MEMBER_ID, ROOMS, model, CROPS_BASE
-from store import get_items as db_get_items, delete_item as db_delete_item, update_item as db_update_item
+from store import get_items as db_get_items, delete_item as db_delete_item, update_item as db_update_item, get_item_filepath
 
 app = Flask(__name__)
 CORS(app)
@@ -82,9 +82,11 @@ def list_items():
         room_id = row.get("room_id")
         crop_filename = row.get("crop_path")
         crop_url = f"/crops/{MEMBER_ID}/{crop_filename}" if crop_filename else None
+        yolo_label = model.names.get(row["class_id"], f"class_{row['class_id']}")
         items.append({
             "id": row["id"],
-            "label": model.names.get(row["class_id"], f"class_{row['class_id']}"),
+            "label": row.get("name") or yolo_label,
+            "description": row.get("description") or None,
             "purchase_year": row["purchase_year"],
             "cost": row["cost"],
             "room": ROOMS[room_id - 1] if room_id and 1 <= room_id <= len(ROOMS) else "Unknown",
@@ -105,6 +107,14 @@ def serve_crop(member_id, filename):
     return send_file(crop_path, mimetype='image/jpeg')
 
 
+@app.route('/photo/<int:item_id>', methods=['GET'])
+def serve_photo(item_id):
+    filepath = get_item_filepath(item_id)
+    if not filepath or not os.path.isfile(filepath):
+        abort(404)
+    return send_file(filepath)
+
+
 @app.route('/items/<int:item_id>', methods=['DELETE'])
 def remove_item(item_id):
     db_delete_item(item_id)
@@ -116,7 +126,17 @@ def edit_item(item_id):
     data = request.get_json()
     if not data:
         return jsonify({"error": "No data provided."}), 400
-    db_update_item(item_id, purchase_year=data.get("purchase_year"), cost=data.get("cost"))
+    name = data.get("name")
+    if name is not None:
+        name = name.strip() or None  # empty string → clear custom name
+    description = data.get("description")
+    if description is not None:
+        description = description.strip() or None
+    db_update_item(item_id,
+                   purchase_year=data.get("purchase_year"),
+                   cost=data.get("cost"),
+                   name=name,
+                   description=description)
     return jsonify({"message": "Updated."})
 
 

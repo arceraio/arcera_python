@@ -81,7 +81,7 @@ export function render() {
 
 const API = 'http://localhost:5000';
 
-export function init(openCamera) {
+export function init(openCamera, navigate) {
   const hamburgerBtn = document.getElementById('hamburgerBtn');
   const drawer = document.getElementById('drawer');
   const drawerOverlay = document.getElementById('drawerOverlay');
@@ -104,11 +104,6 @@ export function init(openCamera) {
     item.addEventListener('click', async () => {
       const nav = item.dataset.nav;
 
-      drawer.querySelectorAll('.drawer-menu [data-nav]').forEach(el => el.classList.remove('active'));
-      if (nav !== 'scan' && nav !== 'export' && nav !== 'logout') {
-        item.classList.add('active');
-      }
-
       close();
 
       if (nav === 'scan') {
@@ -121,8 +116,10 @@ export function init(openCamera) {
         } catch {
           alert('Could not reach the server. Is it running?');
         }
-      } else if (nav === 'dashboard' || nav === 'items') {
-        document.querySelector('.main-content')?.scrollIntoView({ behavior: 'smooth' });
+      } else if (nav === 'dashboard') {
+        navigate('home');
+      } else if (nav === 'items') {
+        navigate('items');
       }
     });
   });

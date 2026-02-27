@@ -48,7 +48,7 @@ export function render(items, activeFilter = 0) {
     });
 
   const cards = filtered.map(it => `
-    <div class="item-card">
+    <div class="item-card" data-id="${it.id}">
       <button class="item-card-delete" data-id="${it.id}" aria-label="Remove item">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
           <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>

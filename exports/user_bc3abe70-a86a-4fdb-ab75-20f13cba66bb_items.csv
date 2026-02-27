@@ -1,3 +1,10 @@
 item name,purchase_year,cost,count,filepath,room,created,modified
-couch,,,1,/home/kevin/Apps/arcera_python/backend/../uploads/furniture1.jpeg,Living Room,2026-02-26 08:38:41,2026-02-26 08:38:41
-vase,1902,,1,/home/kevin/Apps/arcera_python/backend/../uploads/furniture1.jpeg,Living Room,2026-02-26 08:38:41,2026-02-26 08:38:41
+couch,,,1,/home/kevin/Apps/arcera_python/backend/../uploads/jimmy-dean--ipozsSwNmU-unsplash.jpg,Living Room,2026-02-27 20:14:01,2026-02-27 20:14:01
+chair,,,1,/home/kevin/Apps/arcera_python/backend/../uploads/jimmy-dean--ipozsSwNmU-unsplash.jpg,Living Room,2026-02-27 20:14:01,2026-02-27 20:14:01
+dining table,,,1,/home/kevin/Apps/arcera_python/backend/../uploads/jimmy-dean--ipozsSwNmU-unsplash.jpg,Living Room,2026-02-27 20:14:01,2026-02-27 20:14:01
+couch,,,1,/home/kevin/Apps/arcera_python/backend/../uploads/jimmy-dean--ipozsSwNmU-unsplash.jpg,Living Room,2026-02-27 20:14:01,2026-02-27 20:14:01
+chair,,,1,/home/kevin/Apps/arcera_python/backend/../uploads/swati-b-dS-nZJYaANA-unsplash.jpg,Living Room,2026-02-27 23:07:40,2026-02-27 23:07:40
+chair,,,1,/home/kevin/Apps/arcera_python/backend/../uploads/swati-b-dS-nZJYaANA-unsplash.jpg,Living Room,2026-02-27 23:07:40,2026-02-27 23:07:40
+couch,,,1,/home/kevin/Apps/arcera_python/backend/../uploads/swati-b-dS-nZJYaANA-unsplash.jpg,Living Room,2026-02-27 23:07:40,2026-02-27 23:07:40
+vase,,,1,/home/kevin/Apps/arcera_python/backend/../uploads/swati-b-dS-nZJYaANA-unsplash.jpg,Living Room,2026-02-27 23:07:40,2026-02-27 23:07:40
+vase,,,1,/home/kevin/Apps/arcera_python/backend/../uploads/swati-b-dS-nZJYaANA-unsplash.jpg,Living Room,2026-02-27 23:07:40,2026-02-27 23:07:40

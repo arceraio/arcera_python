@@ -5,14 +5,21 @@ const API = 'http://localhost:5000';
 
 let allItems = [];
 let roomFilter = 0;
+let activeTab = 'home';
 
 function renderMain() {
   const main = document.querySelector('.main-content');
-  main.innerHTML = `
-    ${renderSummary(allItems)}
-    ${renderItemsList(allItems, roomFilter)}
-  `;
-  bindMainEvents();
+  if (activeTab === 'items') {
+    main.innerHTML = renderItemsList(allItems, roomFilter);
+    bindMainEvents();
+  } else {
+    main.innerHTML = renderSummary(allItems);
+  }
+}
+
+export function setView(tab) {
+  activeTab = tab;
+  renderMain();
 }
 
 function bindMainEvents() {
@@ -49,6 +56,10 @@ async function loadItems() {
 
 export function init() {
   loadItems();
+}
+
+export function getItem(id) {
+  return allItems.find(it => it.id === parseInt(id)) || null;
 }
 
 export { loadItems };

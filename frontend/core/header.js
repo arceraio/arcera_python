@@ -23,6 +23,20 @@ export function render() {
           <span class="logo-text">ARCERA</span>
         </div>
       </div>
+      <div class="header-right">
+        <button class="header-btn header-btn-add" id="headerAddBtn" aria-label="Add item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <line x1="12" y1="5" x2="12" y2="19"/>
+            <line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+        </button>
+        <button class="header-btn header-btn-person" id="headerPersonBtn" aria-label="Profile">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+            <circle cx="12" cy="7" r="4"/>
+          </svg>
+        </button>
+      </div>
     </header>
   `;
 }

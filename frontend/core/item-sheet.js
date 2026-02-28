@@ -253,8 +253,10 @@ function renderSheet() {
   document.getElementById('itemSheetSave').addEventListener('click', async () => {
     const name        = document.getElementById('itemSheetName').value.trim() || null;
     const description = document.getElementById('itemSheetDesc').value.trim() || null;
-    const year        = parseInt(document.getElementById('itemSheetYear').value) || null;
-    const cost        = parseFloat(document.getElementById('itemSheetCost').value) || null;
+    const yearRaw     = parseInt(document.getElementById('itemSheetYear').value);
+    const year        = isNaN(yearRaw) ? null : yearRaw;
+    const costRaw     = parseFloat(document.getElementById('itemSheetCost').value);
+    const cost        = isNaN(costRaw) ? null : costRaw;
     await fetch(`${API}/items/${it.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },

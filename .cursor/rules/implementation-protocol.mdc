@@ -1,0 +1,32 @@
+---
+description: Describe every planned action before writing any code, stop and require explicit user approval before proceeding, and prohibit logic changes
+alwaysApply: true
+---
+
+# Implementation Protocol
+
+## Before Writing Anything
+
+Before touching a single file, list **every individual action** you plan to take:
+
+- Each file you will edit
+- What specific change will be made in that file
+- Why that change is needed
+
+Then **stop completely** and ask the user for approval. Do not write any code until the user explicitly says to proceed (e.g. "yes", "go ahead", "proceed").
+
+### Required format
+
+> **Planned actions:**
+> 1. `path/to/file.js` — [what changes] because [why]
+> 2. `path/to/style.css` — [what changes] because [why]
+>
+> Shall I proceed?
+
+If the user asks a follow-up question or requests a change to the plan, revise the list and ask again before writing anything.
+
+## Logic & Implementation Constraints
+
+- **Never change implementation method or logic.** If asked to edit styling, only touch styling. If asked to edit copy, only touch copy. Do not refactor, restructure, or "improve" adjacent code.
+- If you notice a bug or improvement opportunity unrelated to the request, mention it **after** completing the task — never fix it silently.
+- Scope every edit to exactly what was asked. Nothing more.

@@ -30,10 +30,26 @@ function navigate(tab) {
 initDrawer(openCamera, navigate);
 initCamera(refresh);
 initItemSheet(refresh);
+
+// On mobile the header is position:fixed (out of flow) so main-content needs
+// its top padding bumped up by the header's rendered height.
+if (window.matchMedia('(max-width: 768px)').matches) {
+  const hdr = document.querySelector('.header');
+  const main = document.querySelector('.main-content');
+  const existingPt = parseInt(getComputedStyle(main).paddingTop, 10);
+  main.style.paddingTop = (hdr.offsetHeight + existingPt) + 'px';
+}
+
 refresh();
 
+document.getElementById('headerAddBtn').addEventListener('click', openCamera);
+// headerPersonBtn leads nowhere yet
+
 document.querySelectorAll('.bottom-nav .nav-item').forEach(btn => {
-  btn.addEventListener('click', () => navigate(btn.dataset.tab));
+  btn.addEventListener('click', () => {
+    if (btn.dataset.tab === 'resources') return; // page not yet built
+    navigate(btn.dataset.tab);
+  });
 });
 
 document.body.addEventListener('click', e => {
@@ -48,3 +64,22 @@ document.body.addEventListener('click', e => {
   const item = getItem(card.dataset.id);
   if (item) openItemSheet(item);
 });
+
+// Autohide header + bottom nav on scroll down (mobile only)
+{
+  const header = document.querySelector('.header');
+  const bottomNav = document.querySelector('.bottom-nav');
+  let lastY = 0;
+  const DELTA = 6;     // ignore micro-jitter
+  const OFFSET = 60;   // don't hide until scrolled past 60px
+
+  window.addEventListener('scroll', () => {
+    if (!window.matchMedia('(max-width: 768px)').matches) return;
+    const y = window.scrollY;
+    if (Math.abs(y - lastY) < DELTA) return;
+    const hiding = y > lastY && y > OFFSET;
+    header.classList.toggle('header--hidden', hiding);
+    bottomNav.classList.toggle('bottom-nav--hidden', hiding);
+    lastY = y;
+  }, { passive: true });
+}

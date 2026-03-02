@@ -1,5 +1,10 @@
 const API = 'http://localhost:5000';
 
+const ROOMS = [
+  "Living Room", "Bedroom", "Kitchen", "Bathroom",
+  "Dining Room", "Office", "Garage", "Other",
+];
+
 let onRefresh = null;
 let currentItem = null;
 
@@ -240,6 +245,12 @@ function renderSheet() {
           value="${it.cost != null ? it.cost : ''}" placeholder="0.00"
           min="0" step="0.01">
       </div>
+      <div class="item-sheet-field">
+        <label class="item-sheet-label">Room</label>
+        <select id="itemSheetRoom" class="item-sheet-input">
+          ${ROOMS.map((r, i) => `<option value="${i + 1}"${it.room_id === i + 1 ? ' selected' : ''}>${r}</option>`).join('')}
+        </select>
+      </div>
       <button class="item-sheet-save" id="itemSheetSave">Save Changes</button>
       <button class="item-sheet-delete" id="itemSheetDelete">Delete Item</button>
     </div>
@@ -257,10 +268,11 @@ function renderSheet() {
     const year        = isNaN(yearRaw) ? null : yearRaw;
     const costRaw     = parseFloat(document.getElementById('itemSheetCost').value);
     const cost        = isNaN(costRaw) ? null : costRaw;
+    const room_id     = parseInt(document.getElementById('itemSheetRoom').value) || null;
     await fetch(`${API}/items/${it.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, description, purchase_year: year, cost }),
+      body: JSON.stringify({ name, description, purchase_year: year, cost, room_id }),
     });
     closeSheet();
     onRefresh();

@@ -1,5 +1,12 @@
 const TOTAL_ROOMS = 8;
-const fmt = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 });
+const fmtFull = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 });
+
+function fmtValue(v) {
+  if (v >= 1000000) return `$${(v / 1000000).toFixed(1)}M`;
+  if (v >= 10000)   return `$${Math.round(v / 1000)}K`;
+  if (v >= 1000)    return `$${(v / 1000).toFixed(1)}K`;
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v);
+}
 
 function dateLabel(isoString) {
   const now = new Date();
@@ -43,7 +50,7 @@ function renderTimeline(items) {
                     </svg>
                    </div>`}
               <div class="item-card-name">${it.label}</div>
-              <div class="item-card-cost">${it.cost != null ? fmt.format(it.cost) : '—'}</div>
+              <div class="item-card-cost">${it.cost != null ? fmtFull.format(it.cost) : '—'}</div>
               <span class="item-card-room">${it.room}</span>
             </div>
           `).join('')}
@@ -72,13 +79,14 @@ export function render(items) {
     `;
   }
 
-  const valued = items.filter(it => it.cost != null).length;
-  const duplicates = items.filter(it => it.duplicate_of != null).length;
-  const rooms = new Set(items.map(it => it.room_id).filter(Boolean)).size;
+  const totalValue  = items.reduce((sum, it) => sum + (it.cost || 0), 0);
+  const valued      = items.filter(it => it.cost != null).length;
+  const duplicates  = items.filter(it => it.duplicate_of != null).length;
+  const rooms       = new Set(items.map(it => it.room_id).filter(Boolean)).size;
 
-  const roomPct  = Math.round((rooms      / TOTAL_ROOMS) * 100);
-  const valuedPct = Math.round((valued    / total)        * 100);
-  const dupPct    = Math.round((duplicates / total)       * 100);
+  const roomPct    = Math.round((rooms      / TOTAL_ROOMS) * 100);
+  const valuedPct  = Math.round((valued     / total)       * 100);
+  const dupPct     = Math.round((duplicates / total)       * 100);
 
   return `
     <div class="summary-stats">
@@ -98,14 +106,16 @@ export function render(items) {
         </div>
       </div>
 
-      <div class="summary-stat" style="
-        --stat-color: var(--emerald);
-        --stat-bg: #ECFDF5;
-        --stat-border: #A7F3D0;
-      ">
+      <div class="summary-stat summary-stat--link"
+           data-navigate="items" data-filter="needsinfo"
+           style="
+             --stat-color: var(--emerald);
+             --stat-bg: #ECFDF5;
+             --stat-border: #A7F3D0;
+           ">
         <div class="summary-stat-body">
           <span class="summary-stat-label">Total Value</span>
-          <span class="summary-stat-value">${valued}</span>
+          <span class="summary-stat-value summary-stat-value--currency">${fmtValue(totalValue)}</span>
           <span class="summary-stat-sub">${valued} / ${total} valued</span>
         </div>
         <div class="summary-stat-bar-track">
@@ -113,11 +123,13 @@ export function render(items) {
         </div>
       </div>
 
-      <div class="summary-stat" style="
-        --stat-color: var(--amber);
-        --stat-bg: #FFFBEB;
-        --stat-border: #FDE68A;
-      ">
+      <div class="summary-stat${duplicates > 0 ? ' summary-stat--link' : ''}"
+           ${duplicates > 0 ? 'data-navigate="items" data-filter="duplicates"' : ''}
+           style="
+             --stat-color: var(--amber);
+             --stat-bg: #FFFBEB;
+             --stat-border: #FDE68A;
+           ">
         <div class="summary-stat-body">
           <span class="summary-stat-label">Duplicates</span>
           <span class="summary-stat-value${duplicates > 0 ? ' summary-stat-value--warn' : ''}">${duplicates}</span>

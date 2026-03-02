@@ -1,7 +1,7 @@
 import { render as renderDrawer, init as initDrawer } from './core/drawer.js';
 import { render as renderHeader } from './core/header.js';
 import { render as renderFooter, setActiveTab, updateItemsBadge } from './core/footer.js';
-import { loadItems, setView, getItem } from './items.js';
+import { loadItems, setView, getItem, setFilter } from './items.js';
 import { init as initCamera, open as openCamera } from './core/camera.js';
 import { init as initItemSheet, open as openItemSheet } from './core/item-sheet.js';
 
@@ -47,14 +47,16 @@ document.getElementById('headerAddBtn').addEventListener('click', openCamera);
 
 document.querySelectorAll('.bottom-nav .nav-item').forEach(btn => {
   btn.addEventListener('click', () => {
-    if (btn.dataset.tab === 'resources') return; // page not yet built
     navigate(btn.dataset.tab);
   });
 });
 
 document.body.addEventListener('click', e => {
   const btn = e.target.closest('[data-navigate]');
-  if (btn) navigate(btn.dataset.navigate);
+  if (!btn) return;
+  const filter = btn.dataset.filter;
+  if (filter !== undefined) setFilter(filter);
+  navigate(btn.dataset.navigate);
 });
 
 document.body.addEventListener('click', e => {

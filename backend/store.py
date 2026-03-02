@@ -71,7 +71,7 @@ def create_item(member_id: str, class_id: int, purchase_year: int, cost: float, 
         return cursor.lastrowid
 
 
-def update_item(item_id: int, purchase_year: int = None, cost: float = None, name: str = None, description: str = None):
+def update_item(item_id: int, purchase_year: int = None, cost: float = None, name: str = None, description: str = None, count: int = None, room_id: int = None):
     now = datetime.now(timezone.utc).isoformat()
     with get_conn() as conn:
         if purchase_year is not None:
@@ -86,6 +86,12 @@ def update_item(item_id: int, purchase_year: int = None, cost: float = None, nam
         if description is not None:
             conn.execute("UPDATE items SET description = ?, modified_at = ? WHERE id = ?",
                          (description, now, item_id))
+        if count is not None:
+            conn.execute("UPDATE items SET count = ?, modified_at = ? WHERE id = ?",
+                         (count, now, item_id))
+        if room_id is not None:
+            conn.execute("UPDATE items SET room_id = ?, modified_at = ? WHERE id = ?",
+                         (room_id, now, item_id))
         conn.execute("UPDATE items SET modified_at = ? WHERE id = ?", (now, item_id))
         conn.commit()
 

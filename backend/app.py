@@ -85,10 +85,12 @@ def list_items():
         yolo_label = model.names.get(row["class_id"], f"class_{row['class_id']}")
         items.append({
             "id": row["id"],
+            "class_id": row["class_id"],
             "label": row.get("name") or yolo_label,
             "description": row.get("description") or None,
             "purchase_year": row["purchase_year"],
             "cost": row["cost"],
+            "count": row.get("count") or 1,
             "room": ROOMS[room_id - 1] if room_id and 1 <= room_id <= len(ROOMS) else "Unknown",
             "room_id": room_id,
             "crop_url": crop_url,
@@ -136,7 +138,9 @@ def edit_item(item_id):
                    purchase_year=data.get("purchase_year"),
                    cost=data.get("cost"),
                    name=name,
-                   description=description)
+                   description=description,
+                   count=data.get("count"),
+                   room_id=data.get("room_id"))
     return jsonify({"message": "Updated."})
 
 

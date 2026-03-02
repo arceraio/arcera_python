@@ -9,7 +9,14 @@ let activeTab = 'home';
 
 function renderMain() {
   const main = document.querySelector('.main-content');
-  if (activeTab === 'items') {
+  if (activeTab === 'resources') {
+    main.innerHTML = `
+      <div class="resources-page">
+        <h2 class="resources-title">Resources</h2>
+        <p class="resources-subtitle">Helpful links and guides coming soon.</p>
+      </div>
+    `;
+  } else if (activeTab === 'items') {
     main.innerHTML = renderItemsList(allItems, roomFilter);
     bindMainEvents();
   } else {
@@ -22,11 +29,21 @@ export function setView(tab) {
   renderMain();
 }
 
+export function setFilter(filter) {
+  roomFilter = filter;
+}
+
+export function getItems() {
+  return allItems;
+}
+
 function bindMainEvents() {
   document.querySelectorAll('.room-chip').forEach(chip => {
     chip.addEventListener('click', () => {
       const raw = chip.dataset.room;
-      roomFilter = raw === 'duplicates' ? 'duplicates' : parseInt(raw);
+      roomFilter = raw === 'duplicates' ? 'duplicates'
+        : raw === 'needsinfo' ? 'needsinfo'
+        : parseInt(raw);
       renderMain();
     });
   });

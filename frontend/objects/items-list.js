@@ -8,7 +8,9 @@ export function render(items, activeFilter = 0) {
     ? items
     : activeFilter === 'duplicates'
       ? items.filter(it => it.duplicate_of != null)
-      : items.filter(it => it.room_id === activeFilter);
+      : activeFilter === 'needsinfo'
+        ? items.filter(it => it.cost == null || it.purchase_year == null)
+        : items.filter(it => it.room_id === activeFilter);
 
   const fmt = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 });
 
@@ -34,10 +36,14 @@ export function render(items, activeFilter = 0) {
   });
 
   const duplicateCount = items.filter(it => it.duplicate_of != null).length;
+  const needsInfoCount = items.filter(it => it.cost == null || it.purchase_year == null).length;
 
   const chips = [`<button class="room-chip${activeFilter === 0 ? ' active' : ''}" data-room="0">All (${items.length})</button>`];
   if (duplicateCount > 0) {
     chips.push(`<button class="room-chip room-chip--warning${activeFilter === 'duplicates' ? ' active' : ''}" data-room="duplicates">Duplicates (${duplicateCount})</button>`);
+  }
+  if (needsInfoCount > 0) {
+    chips.push(`<button class="room-chip room-chip--info${activeFilter === 'needsinfo' ? ' active' : ''}" data-room="needsinfo">Needs Info (${needsInfoCount})</button>`);
   }
   Object.keys(roomCounts)
     .sort((a, b) => roomCounts[b] - roomCounts[a])
@@ -47,7 +53,9 @@ export function render(items, activeFilter = 0) {
       chips.push(`<button class="room-chip${activeFilter === id ? ' active' : ''}" data-room="${id}">${name} (${roomCounts[id]})</button>`);
     });
 
-  const cards = filtered.map(it => `
+  const cards = filtered.map(it => {
+    const missingInfo = it.cost == null || it.purchase_year == null;
+    return `
     <div class="item-card" data-id="${it.id}">
       <button class="item-card-delete" data-id="${it.id}" aria-label="Remove item">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
@@ -67,9 +75,10 @@ export function render(items, activeFilter = 0) {
       <div class="item-card-cost">${it.cost != null ? fmt.format(it.cost) : '\u2014'}</div>
       <span class="item-card-room">${it.room}</span>
       ${it.duplicate_of != null ? `<span class="item-card-duplicate">Duplicate of #${it.duplicate_of}</span>` : ''}
+      ${missingInfo ? `<span class="item-card-needs-info">Needs Info</span>` : ''}
       <div class="item-card-year">${it.purchase_year || ''}</div>
     </div>
-  `).join('');
+  `}).join('');
 
   return `
     <div class="room-chips">${chips.join('')}</div>

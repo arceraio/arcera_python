@@ -41,6 +41,7 @@ def init_db():
             ("duplicate_of", "INTEGER"),
             ("name", "TEXT"),
             ("description", "TEXT"),
+            ("crop_data", "TEXT"),
         ]:
             try:
                 conn.execute(f"ALTER TABLE items ADD COLUMN {col} {col_type}")
@@ -59,13 +60,13 @@ def find_duplicate(member_id: str, class_id: int, x1: int, y1: int, x2: int, y2:
     return row["id"] if row else None
 
 
-def create_item(member_id: str, class_id: int, purchase_year: int, cost: float, filepath: str, room_id: int, name: str = None, crop_path: str = None, x1: int = None, y1: int = None, x2: int = None, y2: int = None, duplicate_of: int = None):
+def create_item(member_id: str, class_id: int, purchase_year: int, cost: float, filepath: str, room_id: int, name: str = None, crop_path: str = None, x1: int = None, y1: int = None, x2: int = None, y2: int = None, duplicate_of: int = None, crop_data: str = None):
     now = datetime.now(timezone.utc).isoformat()
     with get_conn() as conn:
         cursor = conn.execute(
-            """INSERT INTO items (member_id, class_id, purchase_year, cost, filepath, room_id, name, crop_path, x1, y1, x2, y2, duplicate_of, created_at, modified_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (member_id, class_id, purchase_year, cost, filepath, room_id, name, crop_path, x1, y1, x2, y2, duplicate_of, now, now)
+            """INSERT INTO items (member_id, class_id, purchase_year, cost, filepath, room_id, name, crop_path, x1, y1, x2, y2, duplicate_of, created_at, modified_at, crop_data)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (member_id, class_id, purchase_year, cost, filepath, room_id, name, crop_path, x1, y1, x2, y2, duplicate_of, now, now, crop_data)
         )
         conn.commit()
         return cursor.lastrowid
@@ -99,7 +100,7 @@ def update_item(item_id: int, purchase_year: int = None, cost: float = None, nam
 def get_items(member_id: str):
     with get_conn() as conn:
         rows = conn.execute(
-            "SELECT id, class_id, purchase_year, cost, count, filepath, room_id, crop_path, x1, y1, x2, y2, duplicate_of, name, description, created_at, modified_at "
+            "SELECT id, class_id, purchase_year, cost, count, filepath, room_id, crop_path, x1, y1, x2, y2, duplicate_of, name, description, created_at, modified_at, crop_data "
             "FROM items WHERE member_id = ? ORDER BY created_at DESC",
             (member_id,)
         ).fetchall()

@@ -1,5 +1,7 @@
 from ultralytics import YOLO
 import os
+import base64
+import io
 import uuid
 from PIL import Image
 from store import init_db, verify_member, create_item, find_duplicate
@@ -103,8 +105,10 @@ def store_items(member_id, items, filepath):
     if not verify_member(member_id):
         raise ValueError(f"Member '{member_id}' not found in database.")
 
-    member_crops_dir = os.path.join(CROPS_BASE, member_id)
-    os.makedirs(member_crops_dir, exist_ok=True)
+    # TODO: when migrating to cloud storage (Cloudinary / S3), replace base64
+    # encoding below with an upload call and store the returned URL in crop_path.
+    # member_crops_dir = os.path.join(CROPS_BASE, member_id)
+    # os.makedirs(member_crops_dir, exist_ok=True)
 
     img = Image.open(filepath)
 
@@ -116,7 +120,7 @@ def store_items(member_id, items, filepath):
         if bbox:
             duplicate_of = find_duplicate(member_id, item["class_id"], x1, y1, x2, y2)
 
-        crop_filename = None
+        crop_data = None
         if bbox:
             bbox_area = (x2 - x1) * (y2 - y1)
             img_area  = img.width * img.height
@@ -128,8 +132,12 @@ def store_items(member_id, items, filepath):
             cx2 = min(img.width,  x2 + pad_x)
             cy2 = min(img.height, y2 + pad_y)
             crop = img.crop((cx1, cy1, cx2, cy2))
-            crop_filename = f"{uuid.uuid4().hex}_crop.jpg"
-            crop.save(os.path.join(member_crops_dir, crop_filename), "JPEG")
+            # TODO: swap this block for a cloud upload when ready:
+            # crop_filename = f"{uuid.uuid4().hex}_crop.jpg"
+            # crop.save(os.path.join(member_crops_dir, crop_filename), "JPEG")
+            buf = io.BytesIO()
+            crop.save(buf, "JPEG", quality=85)
+            crop_data = "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()
 
         yolo_label = model.names.get(item["class_id"], f"class_{item['class_id']}")
         create_item(
@@ -140,7 +148,8 @@ def store_items(member_id, items, filepath):
             filepath,
             item["room_id"],
             name=yolo_label,
-            crop_path=crop_filename,
+            # crop_path=crop_filename,  # TODO: restore when using cloud storage
             x1=x1, y1=y1, x2=x2, y2=y2,
             duplicate_of=duplicate_of,
+            crop_data=crop_data,
         )

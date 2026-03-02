@@ -2,3 +2,4 @@ ultralytics
 flask
 flask-cors
 gunicorn
+requests

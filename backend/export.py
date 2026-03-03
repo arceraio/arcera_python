@@ -1,18 +1,17 @@
 #!/usr/bin/env python3
 """
-export.py - Export a user's items from the SQLite database to a CSV file.
+export.py - Export a user's items from Supabase to a CSV file.
 Usage: python export.py <member_id>
 """
 
-import sqlite3
 import csv
 import sys
 import os
 from pathlib import Path
 from datetime import datetime
 from ultralytics import YOLO
+from store import get_items
 
-DB_PATH    = os.path.join(os.path.dirname(__file__), '..', 'arcera.db')
 EXPORTS_DIR = Path(os.path.join(os.path.dirname(__file__), '..', 'exports'))
 
 ROOMS = [
@@ -24,7 +23,6 @@ model = YOLO('yolo12n.pt')
 
 
 def format_dt(iso_str):
-    """Convert ISO 8601 timestamp to simple YYYY-MM-DD HH:MM:SS."""
     try:
         return datetime.fromisoformat(iso_str).strftime('%Y-%m-%d %H:%M:%S')
     except (ValueError, TypeError):
@@ -32,60 +30,41 @@ def format_dt(iso_str):
 
 
 def export_to_csv(member_id: str) -> str:
-    if not os.path.isfile(DB_PATH):
-        raise FileNotFoundError(f"Database not found at {DB_PATH}")
+    rows = get_items(member_id)
 
-    conn = None
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
+    if not rows:
+        print(f"No items found for member_id: {member_id}")
+        return None
 
-        cursor.execute("""
-            SELECT class_id, purchase_year, cost, count,
-                   filepath, room_id, created_at, modified_at
-            FROM items
-            WHERE member_id = ?
-        """, (member_id,))
-        rows = cursor.fetchall()
+    safe_id = "".join(c for c in member_id if c.isalnum() or c in ('-', '_'))
+    if not safe_id:
+        safe_id = "unknown"
 
-        if not rows:
-            print(f"No items found for member_id: {member_id}")
-            return None
+    EXPORTS_DIR.mkdir(exist_ok=True)
+    csv_path = EXPORTS_DIR / f"user_{safe_id}_items.csv"
 
-        safe_id = "".join(c for c in member_id if c.isalnum() or c in ('-', '_'))
-        if not safe_id:
-            safe_id = "unknown"
+    headers = ["item name", "purchase_year", "cost", "count",
+               "filepath", "room", "created", "modified"]
 
-        EXPORTS_DIR.mkdir(exist_ok=True)
-        csv_path = EXPORTS_DIR / f"user_{safe_id}_items.csv"
+    with open(csv_path, 'w', newline='', encoding='utf-8') as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(headers)
+        for row in rows:
+            class_id = row["class_id"]
+            room_id  = row.get("room_id")
+            writer.writerow([
+                model.names.get(class_id, f"class_{class_id}"),
+                row.get("purchase_year"),
+                row.get("cost"),
+                row.get("count") or 1,
+                row.get("filepath"),
+                ROOMS[room_id - 1] if room_id and 1 <= room_id <= len(ROOMS) else room_id,
+                format_dt(row.get("created_at")),
+                format_dt(row.get("modified_at")),
+            ])
 
-        headers = ["item name", "purchase_year", "cost", "count",
-                   "filepath", "room", "created", "modified"]
-
-        with open(csv_path, 'w', newline='', encoding='utf-8') as csvfile:
-            writer = csv.writer(csvfile)
-            writer.writerow(headers)
-            for row in rows:
-                class_id, purchase_year, cost, count, filepath, room_id, created_at, modified_at = row
-                writer.writerow([
-                    model.names[class_id],
-                    purchase_year,
-                    cost,
-                    count,
-                    filepath,
-                    ROOMS[room_id - 1] if room_id and 1 <= room_id <= len(ROOMS) else room_id,
-                    format_dt(created_at),
-                    format_dt(modified_at),
-                ])
-
-        print(f"Exported {len(rows)} row(s) to {csv_path}")
-        return str(csv_path)
-
-    except sqlite3.Error as e:
-        raise RuntimeError(f"Database error: {e}")
-    finally:
-        if conn:
-            conn.close()
+    print(f"Exported {len(rows)} row(s) to {csv_path}")
+    return str(csv_path)
 
 
 def main():

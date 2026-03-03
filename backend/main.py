@@ -7,7 +7,6 @@ from export import export_to_csv
 
 init_db()
 
-MEMBER_ID = 'bc3abe70-a86a-4fdb-ab75-20f13cba66bb'  # replace with Wix session member ID later
 
 VALID_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.webp', '.bmp', '.tiff'}
 

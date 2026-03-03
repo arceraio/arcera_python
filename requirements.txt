@@ -2,3 +2,6 @@ ultralytics
 flask
 flask-cors
 gunicorn
+supabase
+python-dotenv
+PyJWT

@@ -1,8 +1,10 @@
 from flask import Flask, request, jsonify, send_file, abort
 from flask_cors import CORS
 import os
-from main import get_image_path, check_file_exists, detect_items, store_items, export_member_items, MEMBER_ID, ROOMS, model, CROPS_BASE
+from main import get_image_path, check_file_exists, detect_items, store_items, export_member_items, ROOMS, model, CROPS_BASE
 from store import get_items as db_get_items, delete_item as db_delete_item, update_item as db_update_item, get_item_filepath
+from supabase_client import get_supabase
+from auth import get_member_id
 
 app = Flask(__name__)
 CORS(app)
@@ -15,6 +17,15 @@ uploaded_file_path = {"path": None}
 @app.route('/', methods=['GET'])
 def health():
     return jsonify({"status": "ok", "message": "Arcera YOLO API is running"})
+
+
+@app.route('/supabase/health', methods=['GET'])
+def supabase_health():
+    try:
+        get_supabase()
+        return jsonify({"status": "ok", "message": "Supabase connected"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 @app.route('/upload', methods=['POST'])
 def upload():
@@ -48,6 +59,10 @@ def detect():
 
 @app.route('/store', methods=['POST'])
 def store():
+    try:
+        member_id = get_member_id()
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 401
     data = request.get_json()
     if not data or "items" not in data:
         return jsonify({"error": "No items provided."}), 400
@@ -55,18 +70,26 @@ def store():
     if not path:
         return jsonify({"error": "No file path provided."}), 400
     try:
-        store_items(MEMBER_ID, data["items"], path)
+        store_items(member_id, data["items"], path)
     except ValueError as e:
         return jsonify({"error": str(e)}), 404
     return jsonify({"message": f"Stored {len(data['items'])} items."})
 
 @app.route('/member', methods=['GET'])
 def member():
-    return jsonify({"member_id": MEMBER_ID})
+    try:
+        member_id = get_member_id()
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 401
+    return jsonify({"member_id": member_id})
 
 
-@app.route('/export/<member_id>', methods=['GET'])
-def export(member_id):
+@app.route('/export', methods=['GET'])
+def export():
+    try:
+        member_id = get_member_id()
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 401
     try:
         csv_path = export_member_items(member_id)
     except ValueError as e:
@@ -76,12 +99,16 @@ def export(member_id):
 
 @app.route('/items', methods=['GET'])
 def list_items():
-    rows = db_get_items(MEMBER_ID)
+    try:
+        member_id = get_member_id()
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 401
+    rows = db_get_items(member_id)
     items = []
     for row in rows:
         room_id = row.get("room_id")
         crop_filename = row.get("crop_path")
-        crop_url = f"/crops/{MEMBER_ID}/{crop_filename}" if crop_filename else None
+        crop_url = f"/crops/{member_id}/{crop_filename}" if crop_filename else None
         yolo_label = model.names.get(row["class_id"], f"class_{row['class_id']}")
         items.append({
             "id": row["id"],

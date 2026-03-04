@@ -5,3 +5,4 @@ gunicorn
 supabase
 python-dotenv
 PyJWT
+gradio_client

@@ -13,3 +13,5 @@ services:
         sync: false
       - key: SUPABASE_JWT_SECRET
         sync: false
+      - key: YOLO_SERVICE_URL
+        sync: false

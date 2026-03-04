@@ -1,7 +1,8 @@
 from flask import Flask, request, jsonify, send_file, abort
 from flask_cors import CORS
 import os
-from main import get_image_path, check_file_exists, detect_items, store_items, export_member_items, ROOMS, model, CROPS_BASE
+from main import get_image_path, check_file_exists, detect_items, store_items, export_member_items, ROOMS, CROPS_BASE
+from yolo_model import get_model
 from store import get_items as db_get_items, delete_item as db_delete_item, update_item as db_update_item, get_item_filepath
 from supabase_client import get_supabase
 from auth import get_member_id
@@ -109,7 +110,7 @@ def list_items():
         room_id = row.get("room_id")
         crop_filename = row.get("crop_path")
         crop_url = f"/crops/{member_id}/{crop_filename}" if crop_filename else None
-        yolo_label = model.names.get(row["class_id"], f"class_{row['class_id']}")
+        yolo_label = get_model().names.get(row["class_id"], f"class_{row['class_id']}")
         items.append({
             "id": row["id"],
             "class_id": row["class_id"],

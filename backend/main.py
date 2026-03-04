@@ -1,9 +1,9 @@
-from ultralytics import YOLO
 import os
 import uuid
 from PIL import Image
 from store import init_db, verify_member, create_item, find_duplicate
 from export import export_to_csv
+from yolo_model import get_model
 
 init_db()
 
@@ -67,8 +67,6 @@ def check_file_exists(path):
         return False, f"Invalid file type '{ext}'. Supported: {', '.join(VALID_EXTENSIONS)}"
     return True, "File is valid."
 
-model = YOLO('yolo12n.pt')
-
 CROPS_BASE = os.path.join(os.path.dirname(__file__), '..', 'uploads', 'crops')
 
 def export_member_items(member_id):
@@ -78,6 +76,7 @@ def export_member_items(member_id):
 
 
 def detect_items(path):
+    model = get_model()
     results = model(path)
     boxes = results[0].boxes
     if not boxes:
@@ -130,7 +129,7 @@ def store_items(member_id, items, filepath):
             crop_filename = f"{uuid.uuid4().hex}_crop.jpg"
             crop.save(os.path.join(member_crops_dir, crop_filename), "JPEG")
 
-        yolo_label = model.names.get(item["class_id"], f"class_{item['class_id']}")
+        yolo_label = get_model().names.get(item["class_id"], f"class_{item['class_id']}")
         create_item(
             member_id,
             item["class_id"],

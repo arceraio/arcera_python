@@ -9,8 +9,8 @@ import sys
 import os
 from pathlib import Path
 from datetime import datetime
-from ultralytics import YOLO
 from store import get_items
+from yolo_model import get_model
 
 EXPORTS_DIR = Path(os.path.join(os.path.dirname(__file__), '..', 'exports'))
 
@@ -18,8 +18,6 @@ ROOMS = [
     "Living Room", "Bedroom", "Kitchen", "Bathroom",
     "Dining Room", "Office", "Garage", "Other",
 ]
-
-model = YOLO('yolo12n.pt')
 
 
 def format_dt(iso_str):
@@ -53,7 +51,7 @@ def export_to_csv(member_id: str) -> str:
             class_id = row["class_id"]
             room_id  = row.get("room_id")
             writer.writerow([
-                model.names.get(class_id, f"class_{class_id}"),
+                get_model().names.get(class_id, f"class_{class_id}"),
                 row.get("purchase_year"),
                 row.get("cost"),
                 row.get("count") or 1,

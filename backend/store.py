@@ -59,7 +59,8 @@ def create_item(member_id: str, class_id: int, purchase_year: int, cost: float,
 
 def update_item(item_id: int, purchase_year: int = None, cost: float = None,
                 name: str = None, description: str = None,
-                count: int = None, room_id: int = None):
+                count: int = None, room_id: int = None,
+                crop_path: str = None, original_url: str = None):
     now = datetime.now(timezone.utc).isoformat()
     updates = {"modified_at": now}
     if purchase_year is not None:
@@ -74,6 +75,10 @@ def update_item(item_id: int, purchase_year: int = None, cost: float = None,
         updates["count"] = count
     if room_id is not None:
         updates["room_id"] = room_id
+    if crop_path is not None:
+        updates["crop_path"] = crop_path
+    if original_url is not None:
+        updates["original_url"] = original_url
     get_supabase().table("item").update(updates).eq("id", item_id).execute()
 
 

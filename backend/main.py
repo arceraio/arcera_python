@@ -1,9 +1,17 @@
 import os
+import io
 import uuid
+import logging
 from PIL import Image
-from store import init_db, verify_member, create_item, find_duplicate
+from store import init_db, verify_member, create_item, find_duplicate, update_item
 from export import export_to_csv
 from yolo_model import get_model
+from storage import upload_bytes
+
+
+class DetectionUnavailableError(RuntimeError):
+    """Raised when both the remote YOLO service and the local model fail."""
+    pass
 
 init_db()
 
@@ -67,8 +75,6 @@ def check_file_exists(path):
         return False, f"Invalid file type '{ext}'. Supported: {', '.join(VALID_EXTENSIONS)}"
     return True, "File is valid."
 
-CROPS_BASE = os.path.join(os.path.dirname(__file__), '..', 'uploads', 'crops')
-
 def export_member_items(member_id):
     if not verify_member(member_id):
         raise ValueError(f"Member '{member_id}' not found in database.")
@@ -77,32 +83,56 @@ def export_member_items(member_id):
 
 def detect_items(path):
     model = get_model()
-    results = model(path)
-    boxes = results[0].boxes
-    if not boxes:
-        return []
 
-    items = []
-    for box in boxes:
-        class_id = int(box.cls[0])
-        label = results[0].names[class_id]
-        confidence = round(float(box.conf[0]), 2)
-        x1, y1, x2, y2 = [round(float(v)) for v in box.xyxy[0]]
-        items.append({
-            "class_id": class_id,
-            "label": label,
-            "confidence": confidence,
-            "bbox": [x1, y1, x2, y2],
-        })
-    return items
+    # ── remote path ───────────────────────────────────────────────────────────
+    remote_url = os.environ.get("YOLO_SERVICE_URL")
+    if remote_url:
+        try:
+            from remote_detect import remote_detect
+            name_to_id = {v: k for k, v in model.names.items()}
+            return remote_detect(path, name_to_id)
+        except Exception as exc:
+            logging.warning("Remote YOLO service failed (%s), falling back to local model.", exc)
+
+    # ── local path ────────────────────────────────────────────────────────────
+    try:
+        results = model(path)
+        boxes = results[0].boxes
+        if not boxes:
+            return []
+
+        items = []
+        for box in boxes:
+            class_id = int(box.cls[0])
+            label = results[0].names[class_id]
+            confidence = round(float(box.conf[0]), 2)
+            x1, y1, x2, y2 = [round(float(v)) for v in box.xyxy[0]]
+            items.append({
+                "class_id": class_id,
+                "label": label,
+                "confidence": confidence,
+                "bbox": [x1, y1, x2, y2],
+            })
+        return items
+    except Exception as exc:
+        raise DetectionUnavailableError(
+            "Detection failed: the remote YOLO service is unreachable and the local "
+            f"model also failed to run. Remote URL configured: {bool(remote_url)}. "
+            f"Local error: {exc}"
+        ) from exc
 
 
 def store_items(member_id, items, filepath):
     if not verify_member(member_id):
         raise ValueError(f"Member '{member_id}' not found in database.")
 
-    member_crops_dir = os.path.join(CROPS_BASE, member_id)
-    os.makedirs(member_crops_dir, exist_ok=True)
+    upload_uuid = uuid.uuid4().hex
+    ext = os.path.splitext(filepath)[1].lower() or ".jpg"
+    original_storage_path = f"originals/{member_id}_{upload_uuid}{ext}"
+
+    with open(filepath, "rb") as f:
+        original_bytes = f.read()
+    upload_bytes(original_storage_path, original_bytes, f"image/{ext.lstrip('.')}")
 
     img = Image.open(filepath)
 
@@ -114,7 +144,20 @@ def store_items(member_id, items, filepath):
         if bbox:
             duplicate_of = find_duplicate(member_id, item["class_id"], x1, y1, x2, y2)
 
-        crop_filename = None
+        yolo_label = get_model().names.get(item["class_id"], f"class_{item['class_id']}")
+        item_id = create_item(
+            member_id,
+            item["class_id"],
+            item["purchase_year"],
+            item["cost"],
+            original_storage_path,
+            item["room_id"],
+            name=yolo_label,
+            crop_path=None,
+            x1=x1, y1=y1, x2=x2, y2=y2,
+            duplicate_of=duplicate_of,
+        )
+
         if bbox:
             bbox_area = (x2 - x1) * (y2 - y1)
             img_area  = img.width * img.height
@@ -126,19 +169,8 @@ def store_items(member_id, items, filepath):
             cx2 = min(img.width,  x2 + pad_x)
             cy2 = min(img.height, y2 + pad_y)
             crop = img.crop((cx1, cy1, cx2, cy2))
-            crop_filename = f"{uuid.uuid4().hex}_crop.jpg"
-            crop.save(os.path.join(member_crops_dir, crop_filename), "JPEG")
-
-        yolo_label = get_model().names.get(item["class_id"], f"class_{item['class_id']}")
-        create_item(
-            member_id,
-            item["class_id"],
-            item["purchase_year"],
-            item["cost"],
-            filepath,
-            item["room_id"],
-            name=yolo_label,
-            crop_path=crop_filename,
-            x1=x1, y1=y1, x2=x2, y2=y2,
-            duplicate_of=duplicate_of,
-        )
+            buf = io.BytesIO()
+            crop.save(buf, "JPEG")
+            crop_storage_path = f"crops/{member_id}_{item_id}_crop.jpg"
+            upload_bytes(crop_storage_path, buf.getvalue(), "image/jpeg")
+            update_item(item_id, crop_path=crop_storage_path)

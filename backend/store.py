@@ -10,6 +10,22 @@ def init_db():
 # Duplicate detection
 # ---------------------------------------------------------------------------
 
+def find_item_in_room(member_id: str, class_id: int, room_id: int) -> dict | None:
+    """Return the existing non-duplicate item for this class+room, or None."""
+    result = (
+        get_supabase()
+        .table("item")
+        .select("id,count")
+        .eq("user_id", member_id)
+        .eq("class_id", class_id)
+        .eq("room_id", room_id)
+        .is_("duplicate_of", "null")
+        .limit(1)
+        .execute()
+    )
+    return result.data[0] if result.data else None
+
+
 def find_duplicate(member_id: str, class_id: int, x1: int, y1: int, x2: int, y2: int):
     coord = "{%d,%d,%d,%d}" % (x1, y1, x2, y2)  # PostgreSQL array literal
     result = (
@@ -32,7 +48,7 @@ def find_duplicate(member_id: str, class_id: int, x1: int, y1: int, x2: int, y2:
 def create_item(member_id: str, class_id: int, purchase_year: int, cost: float,
                 filepath: str, room_id: int, name: str = None, crop_path: str = None,
                 x1: int = None, y1: int = None, x2: int = None, y2: int = None,
-                duplicate_of: int = None):
+                duplicate_of: int = None, count: int = 1):
     now = datetime.now(timezone.utc).isoformat()
     coordinate = [x1, y1, x2, y2] if x1 is not None else None
     result = (
@@ -49,6 +65,7 @@ def create_item(member_id: str, class_id: int, purchase_year: int, cost: float,
             "crop_path":    crop_path,
             "coordinate":   coordinate,
             "duplicate_of": duplicate_of,
+            "count":        count,
             "created_at":   now,
             "modified_at":  now,
         })
@@ -149,3 +166,49 @@ def verify_member(member_id: str) -> bool:
 def upsert_user(member_id: str):
     # User creation is handled by Supabase Auth
     return member_id
+
+
+# ---------------------------------------------------------------------------
+# Temp photo staging (multi-image flow)
+# ---------------------------------------------------------------------------
+
+def upsert_temp_photo(user_id: str, storage_paths: list, local_paths: list) -> int:
+    """Append to existing row for user, or create new row. Returns row id."""
+    result = get_supabase().table("temp_photo").select("id,img_url,local_paths") \
+        .eq("user_id", user_id).limit(1).execute()
+    if result.data:
+        row = result.data[0]
+        updated_urls   = (row.get("img_url")     or []) + storage_paths
+        updated_locals = (row.get("local_paths") or []) + local_paths
+        get_supabase().table("temp_photo").update({
+            "img_url": updated_urls, "local_paths": updated_locals,
+        }).eq("id", row["id"]).execute()
+        return row["id"]
+    else:
+        res = get_supabase().table("temp_photo").insert({
+            "user_id": user_id, "img_url": storage_paths, "local_paths": local_paths,
+        }).execute()
+        return res.data[0]["id"]
+
+
+def get_temp_photo(user_id: str) -> dict | None:
+    result = get_supabase().table("temp_photo").select("*") \
+        .eq("user_id", user_id).limit(1).execute()
+    return result.data[0] if result.data else None
+
+
+def remove_from_temp_photo(user_id: str, storage_path: str):
+    """Remove one entry (by storage_path) from both arrays."""
+    row = get_temp_photo(user_id)
+    if not row:
+        return
+    urls    = row.get("img_url")     or []
+    locals_ = row.get("local_paths") or []
+    if storage_path in urls:
+        idx = urls.index(storage_path)
+        urls.pop(idx)
+        if idx < len(locals_):
+            locals_.pop(idx)
+    get_supabase().table("temp_photo").update({
+        "img_url": urls, "local_paths": locals_,
+    }).eq("user_id", user_id).execute()

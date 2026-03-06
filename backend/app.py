@@ -3,10 +3,11 @@ from flask_cors import CORS
 import os
 from main import get_image_path, check_file_exists, detect_items, store_items, export_member_items, ROOMS, DetectionUnavailableError
 from yolo_model import get_model
-from store import get_items as db_get_items, delete_item as db_delete_item, update_item as db_update_item, get_item_filepath
+import uuid
+from store import get_items as db_get_items, delete_item as db_delete_item, update_item as db_update_item, get_item_filepath, upsert_temp_photo, get_temp_photo, remove_from_temp_photo
 from supabase_client import get_supabase
 from auth import get_member_id
-from storage import get_signed_url
+from storage import get_signed_url, upload_bytes
 
 app = Flask(__name__)
 CORS(app)
@@ -74,10 +75,13 @@ def store():
     path = data.get("path") or uploaded_file_path.get("path")
     if not path:
         return jsonify({"error": "No file path provided."}), 400
+    original_storage_path = data.get("original_storage_path")
     try:
-        store_items(member_id, data["items"], path)
+        store_items(member_id, data["items"], path, original_storage_path=original_storage_path)
     except ValueError as e:
         return jsonify({"error": str(e)}), 404
+    if original_storage_path:
+        remove_from_temp_photo(member_id, original_storage_path)
     return jsonify({"message": f"Stored {len(data['items'])} items."})
 
 @app.route('/member', methods=['GET'])
@@ -180,6 +184,58 @@ def edit_item(item_id):
                    count=data.get("count"),
                    room_id=data.get("room_id"))
     return jsonify({"message": "Updated."})
+
+
+@app.route('/multi-upload', methods=['POST'])
+def multi_upload():
+    try:
+        member_id = get_member_id()
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 401
+    files = request.files.getlist('images')
+    if not files:
+        return jsonify({"error": "No images provided."}), 400
+
+    storage_paths, local_paths = [], []
+    for file in files:
+        uid = uuid.uuid4().hex
+        ext = os.path.splitext(file.filename)[1].lower() or ".jpg"
+        local_path = os.path.join(UPLOAD_FOLDER, f"{uid}{ext}")
+        file.save(local_path)
+        storage_path = f"originals/{member_id}_{uid}{ext}"
+        with open(local_path, "rb") as f:
+            upload_bytes(storage_path, f.read(), f"image/{ext.lstrip('.')}")
+        storage_paths.append(storage_path)
+        local_paths.append(local_path)
+
+    upsert_temp_photo(member_id, storage_paths, local_paths)
+    return jsonify({"count": len(files), "storage_paths": storage_paths})
+
+
+@app.route('/multiscan', methods=['POST'])
+def multiscan():
+    try:
+        member_id = get_member_id()
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 401
+    row = get_temp_photo(member_id)
+    if not row or not row.get("img_url"):
+        return jsonify({"error": "No staged images found."}), 404
+
+    local_paths   = row.get("local_paths") or []
+    storage_paths = row.get("img_url")     or []
+    results = []
+    for local_path, storage_path in zip(local_paths, storage_paths):
+        try:
+            detections = detect_items(local_path)
+        except DetectionUnavailableError as e:
+            return jsonify({"error": str(e)}), 503
+        results.append({
+            "local_path":   local_path,
+            "storage_path": storage_path,
+            "detections":   detections,
+        })
+    return jsonify({"results": results})
 
 
 if __name__ == '__main__':

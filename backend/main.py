@@ -3,7 +3,7 @@ import io
 import uuid
 import logging
 from PIL import Image
-from store import init_db, verify_member, create_item, find_duplicate, update_item
+from store import init_db, verify_member, create_item, find_duplicate, find_item_in_room, update_item
 from export import export_to_csv
 from yolo_model import get_model
 from storage import upload_bytes
@@ -122,21 +122,36 @@ def detect_items(path):
         ) from exc
 
 
-def store_items(member_id, items, filepath):
+def store_items(member_id, items, filepath, original_storage_path=None):
     if not verify_member(member_id):
         raise ValueError(f"Member '{member_id}' not found in database.")
 
-    upload_uuid = uuid.uuid4().hex
-    ext = os.path.splitext(filepath)[1].lower() or ".jpg"
-    original_storage_path = f"originals/{member_id}_{upload_uuid}{ext}"
-
-    with open(filepath, "rb") as f:
-        original_bytes = f.read()
-    upload_bytes(original_storage_path, original_bytes, f"image/{ext.lstrip('.')}")
+    if original_storage_path is None:
+        upload_uuid = uuid.uuid4().hex
+        ext = os.path.splitext(filepath)[1].lower() or ".jpg"
+        original_storage_path = f"originals/{member_id}_{upload_uuid}{ext}"
+        with open(filepath, "rb") as f:
+            upload_bytes(original_storage_path, f.read(), f"image/{ext.lstrip('.')}")
 
     img = Image.open(filepath)
 
+    # Group detections by class_id — same class in one image → one item with count
+    from collections import defaultdict
+    grouped = defaultdict(list)
     for item in items:
+        grouped[item["class_id"]].append(item)
+
+    for class_id, group in grouped.items():
+        # Use highest-confidence detection as the representative
+        item = max(group, key=lambda x: x.get("confidence", 0))
+        count = len(group)
+
+        # If an item of this class already exists in the same room, just add to its count
+        existing = find_item_in_room(member_id, class_id, item["room_id"])
+        if existing:
+            update_item(existing["id"], count=(existing.get("count") or 1) + count)
+            continue
+
         bbox = item.get("bbox")
         x1, y1, x2, y2 = bbox if bbox else (None, None, None, None)
 
@@ -156,6 +171,7 @@ def store_items(member_id, items, filepath):
             crop_path=None,
             x1=x1, y1=y1, x2=x2, y2=y2,
             duplicate_of=duplicate_of,
+            count=count,
         )
 
         if bbox:

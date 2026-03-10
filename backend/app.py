@@ -1,8 +1,9 @@
 from flask import Flask, request, jsonify, send_file, abort, redirect
 from flask_cors import CORS
 import os
-from main import get_image_path, check_file_exists, detect_items, store_items, export_member_items, ROOMS, DetectionUnavailableError
-from yolo_model import get_model
+from main import get_image_path, check_file_exists, detect_items, store_items, export_member_items, ROOMS
+from errors import DetectionServiceError
+from yolo_model import get_combined_names
 import uuid
 from store import get_items as db_get_items, delete_item as db_delete_item, update_item as db_update_item, get_item_filepath, upsert_temp_photo, get_temp_photo, remove_from_temp_photo
 from supabase_client import get_supabase
@@ -12,7 +13,7 @@ from storage import get_signed_url, upload_bytes
 app = Flask(__name__)
 CORS(app)
 
-UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), '..', 'uploads')
+from config import UPLOAD_FOLDER
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 uploaded_file_path = {"path": None}
@@ -58,7 +59,7 @@ def detect():
         return jsonify({"error": message}), 400
     try:
         detections = detect_items(path)
-    except DetectionUnavailableError as e:
+    except DetectionServiceError as e:
         return jsonify({"error": str(e)}), 503
     return jsonify({"detections": detections, "path": path})
 
@@ -120,7 +121,7 @@ def list_items():
         crop_url = get_signed_url(crop_path) if crop_path else None
         original_path = row.get("filepath")
         original_url = get_signed_url(original_path) if original_path else None
-        yolo_label = get_model().names.get(row["class_id"], f"class_{row['class_id']}")
+        yolo_label = get_combined_names().get(row["class_id"], f"class_{row['class_id']}")
         items.append({
             "id": row["id"],
             "class_id": row["class_id"],
@@ -228,7 +229,7 @@ def multiscan():
     for local_path, storage_path in zip(local_paths, storage_paths):
         try:
             detections = detect_items(local_path)
-        except DetectionUnavailableError as e:
+        except DetectionServiceError as e:
             return jsonify({"error": str(e)}), 503
         results.append({
             "local_path":   local_path,

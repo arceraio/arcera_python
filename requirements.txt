@@ -1,8 +1,9 @@
 ultralytics
+onnxruntime
 flask
 flask-cors
 gunicorn
 supabase
 python-dotenv
 PyJWT
-gradio_client
+requests

@@ -1,0 +1,4 @@
+ultralytics
+onnxruntime-gpu
+flask
+flask-cors

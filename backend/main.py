@@ -1,34 +1,17 @@
 import os
 import io
 import uuid
-import logging
 from PIL import Image
 from store import init_db, verify_member, create_item, find_duplicate, find_item_in_room, update_item
 from export import export_to_csv
-from yolo_model import get_model
+from yolo_model import get_combined_names
 from storage import upload_bytes
-
-
-class DetectionUnavailableError(RuntimeError):
-    """Raised when both the remote YOLO service and the local model fail."""
-    pass
+from config import VALID_EXTENSIONS, ROOMS, YOLO_SERVICE_URL
+from errors import DetectionServiceError
 
 init_db()
 
 
-VALID_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.webp', '.bmp', '.tiff'}
-
-# rooms are the rooms in the house that the user can select from
-ROOMS = [
-    "Living Room",
-    "Bedroom",
-    "Kitchen",
-    "Bathroom",
-    "Dining Room",
-    "Office",
-    "Garage",
-    "Other",
-]
 
 # prompt the user for the purchase year, cost, and room during the detection, and aims to create an item to store in the database
 def prompt_user_inputs(label):
@@ -81,45 +64,11 @@ def export_member_items(member_id):
     return export_to_csv(member_id)
 
 
-def detect_items(path):
-    model = get_model()
-
-    # ── remote path ───────────────────────────────────────────────────────────
-    remote_url = os.environ.get("YOLO_SERVICE_URL")
-    if remote_url:
-        try:
-            from remote_detect import remote_detect
-            name_to_id = {v: k for k, v in model.names.items()}
-            return remote_detect(path, name_to_id)
-        except Exception as exc:
-            logging.warning("Remote YOLO service failed (%s), falling back to local model.", exc)
-
-    # ── local path ────────────────────────────────────────────────────────────
-    try:
-        results = model(path)
-        boxes = results[0].boxes
-        if not boxes:
-            return []
-
-        items = []
-        for box in boxes:
-            class_id = int(box.cls[0])
-            label = results[0].names[class_id]
-            confidence = round(float(box.conf[0]), 2)
-            x1, y1, x2, y2 = [round(float(v)) for v in box.xyxy[0]]
-            items.append({
-                "class_id": class_id,
-                "label": label,
-                "confidence": confidence,
-                "bbox": [x1, y1, x2, y2],
-            })
-        return items
-    except Exception as exc:
-        raise DetectionUnavailableError(
-            "Detection failed: the remote YOLO service is unreachable and the local "
-            f"model also failed to run. Remote URL configured: {bool(remote_url)}. "
-            f"Local error: {exc}"
-        ) from exc
+def detect_items(path: str) -> list[dict]:
+    if not YOLO_SERVICE_URL:
+        raise DetectionServiceError("No detection service configured. Set YOLO_SERVICE_URL.")
+    from remote_detect import remote_detect
+    return remote_detect(path)
 
 
 def store_items(member_id, items, filepath, original_storage_path=None):
@@ -159,7 +108,7 @@ def store_items(member_id, items, filepath, original_storage_path=None):
         if bbox:
             duplicate_of = find_duplicate(member_id, item["class_id"], x1, y1, x2, y2)
 
-        yolo_label = get_model().names.get(item["class_id"], f"class_{item['class_id']}")
+        yolo_label = get_combined_names().get(item["class_id"], f"class_{item['class_id']}")
         item_id = create_item(
             member_id,
             item["class_id"],

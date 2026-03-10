@@ -1,11 +1,6 @@
-import os
 import jwt
 from flask import request
-from dotenv import load_dotenv
-
-load_dotenv()
-
-JWT_SECRET = os.environ.get("SUPABASE_JWT_SECRET")
+from config import SUPABASE_JWT_SECRET as JWT_SECRET
 
 def get_member_id() -> str:
     """Extract and verify the Supabase JWT from the Authorization header.

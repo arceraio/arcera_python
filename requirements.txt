@@ -1,5 +1,3 @@
-ultralytics
-onnxruntime
 flask
 flask-cors
 gunicorn

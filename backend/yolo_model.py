@@ -1,35 +1,41 @@
-from ultralytics import YOLO
-from config import YOLO_MODEL_PATH, COCO_MODEL_PATH, CUSTOM_CLASS_NAMES, CUSTOM_CLASS_OFFSET
+from config import CUSTOM_CLASS_NAMES, CUSTOM_CLASS_OFFSET
 
-_custom_model: YOLO | None = None
-_coco_model:   YOLO | None = None
+# Standard COCO class names (Ultralytics 0-indexed, 80 classes)
+_COCO_NAMES: dict[int, str] = {
+    0: "person", 1: "bicycle", 2: "car", 3: "motorcycle", 4: "airplane",
+    5: "bus", 6: "train", 7: "truck", 8: "boat", 9: "traffic light",
+    10: "fire hydrant", 11: "stop sign", 12: "parking meter", 13: "bench",
+    14: "bird", 15: "cat", 16: "dog", 17: "horse", 18: "sheep", 19: "cow",
+    20: "elephant", 21: "bear", 22: "zebra", 23: "giraffe", 24: "backpack",
+    25: "umbrella", 26: "handbag", 27: "tie", 28: "suitcase", 29: "frisbee",
+    30: "skis", 31: "snowboard", 32: "sports ball", 33: "kite",
+    34: "baseball bat", 35: "baseball glove", 36: "skateboard",
+    37: "surfboard", 38: "tennis racket", 39: "bottle", 40: "wine glass",
+    41: "cup", 42: "fork", 43: "knife", 44: "spoon", 45: "bowl",
+    46: "banana", 47: "apple", 48: "sandwich", 49: "orange", 50: "broccoli",
+    51: "carrot", 52: "hot dog", 53: "pizza", 54: "donut", 55: "cake",
+    56: "chair", 57: "couch", 58: "potted plant", 59: "bed",
+    60: "dining table", 61: "toilet", 62: "tv", 63: "laptop", 64: "mouse",
+    65: "remote", 66: "keyboard", 67: "cell phone", 68: "microwave",
+    69: "oven", 70: "toaster", 71: "sink", 72: "refrigerator", 73: "book",
+    74: "clock", 75: "vase", 76: "scissors", 77: "teddy bear",
+    78: "hair drier", 79: "toothbrush",
+}
+
 _combined_names: dict[int, str] | None = None
-
-
-def get_custom_model() -> YOLO:
-    global _custom_model
-    if _custom_model is None:
-        _custom_model = YOLO(YOLO_MODEL_PATH)
-    return _custom_model
-
-
-def get_coco_model() -> YOLO:
-    global _coco_model
-    if _coco_model is None:
-        _coco_model = YOLO(COCO_MODEL_PATH)
-    return _coco_model
 
 
 def get_combined_names() -> dict[int, str]:
     """COCO classes (0–79) merged with custom classes shifted by CUSTOM_CLASS_OFFSET."""
     global _combined_names
     if _combined_names is None:
-        coco_names = dict(get_coco_model().names)
         custom_names = {k + CUSTOM_CLASS_OFFSET: v for k, v in CUSTOM_CLASS_NAMES.items()}
-        _combined_names = {**coco_names, **custom_names}
+        _combined_names = {**_COCO_NAMES, **custom_names}
     return _combined_names
 
 
-# Backwards-compatible alias — callers that use get_model() get the custom model
-def get_model() -> YOLO:
-    return get_custom_model()
+# Backwards-compatible alias for export.py
+def get_model():
+    class _FakeModel:
+        names = get_combined_names()
+    return _FakeModel()

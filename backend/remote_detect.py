@@ -1,7 +1,7 @@
 # backend/remote_detect.py
 import os
 import requests
-from config import YOLO_SERVICE_URL, DETECT_SERVICE_TIMEOUT
+from config import YOLO_SERVICE_URL, DETECT_SERVICE_TIMEOUT, DETECT_API_KEY
 from errors import DetectionServiceError
 
 
@@ -16,10 +16,12 @@ def remote_detect(image_path: str) -> list[dict]:
         DetectionServiceError on connection failure, timeout, or invalid response.
     """
     try:
+        headers = {"X-API-Key": DETECT_API_KEY} if DETECT_API_KEY else {}
         with open(image_path, "rb") as f:
             response = requests.post(
                 f"{YOLO_SERVICE_URL}/detect",
                 files={"image": (os.path.basename(image_path), f)},
+                headers=headers,
                 timeout=DETECT_SERVICE_TIMEOUT,
             )
         response.raise_for_status()

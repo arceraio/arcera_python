@@ -35,6 +35,9 @@ YOLO_SERVICE_URL: str | None = os.environ.get("YOLO_SERVICE_URL")
 # Seconds to wait for the GPU detection server before raising DetectionServiceError
 DETECT_SERVICE_TIMEOUT: int = int(os.environ.get("DETECT_SERVICE_TIMEOUT", 30))
 
+# Shared secret sent as X-API-Key header to the detection server
+DETECT_API_KEY: str = os.environ.get("DETECT_API_KEY", "")
+
 # Custom (fine-tuned) model — absolute path derived from this file's location
 YOLO_MODEL_PATH: str = os.environ.get(
     "YOLO_MODEL_PATH",

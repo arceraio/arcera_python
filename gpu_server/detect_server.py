@@ -28,6 +28,7 @@ CORS(app)
 CUSTOM_MODEL_PATH = os.environ.get("CUSTOM_MODEL_PATH", "best.onnx")
 COCO_MODEL_PATH   = os.environ.get("COCO_MODEL_PATH",   "yolo12n.pt")
 PORT              = int(os.environ.get("PORT", 8000))
+DETECT_API_KEY    = os.environ.get("DETECT_API_KEY", "")
 
 CUSTOM_CLASS_OFFSET = 100
 
@@ -168,8 +169,16 @@ def health():
     return jsonify({"status": "ok"})
 
 
+def _check_api_key():
+    if DETECT_API_KEY and request.headers.get("X-API-Key") != DETECT_API_KEY:
+        return jsonify({"error": "Unauthorized"}), 401
+
+
 @app.route("/detect", methods=["POST"])
 def detect():
+    err = _check_api_key()
+    if err:
+        return err
     if "image" not in request.files:
         return jsonify({"error": "No image provided."}), 400
 

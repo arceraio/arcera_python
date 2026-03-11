@@ -1,5 +1,6 @@
 flask
 flask-cors
+Pillow
 gunicorn
 supabase
 python-dotenv

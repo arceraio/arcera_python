@@ -1,4 +1,5 @@
 ultralytics
+onnx
 onnxruntime-gpu
 flask
 flask-cors

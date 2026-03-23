@@ -1,7 +1,6 @@
 import json
 import urllib.request
 import jwt
-from jwt.algorithms import ECAlgorithm, HMACAlgorithm
 from flask import request
 from config import SUPABASE_URL, SUPABASE_JWT_SECRET
 
@@ -12,6 +11,13 @@ def _get_ec_public_key():
     """Fetch and cache the EC public key from Supabase JWKS (ES256 projects)."""
     global _ec_public_key
     if _ec_public_key is None:
+        try:
+            from jwt.algorithms import ECAlgorithm
+        except ImportError:
+            raise RuntimeError(
+                "PyJWT[cryptography] is required for ES256 token verification. "
+                "Add PyJWT[cryptography] to requirements.txt."
+            )
         jwks_url = f"{SUPABASE_URL}/auth/v1/.well-known/jwks.json"
         with urllib.request.urlopen(jwks_url, timeout=10) as resp:
             jwks = json.loads(resp.read())

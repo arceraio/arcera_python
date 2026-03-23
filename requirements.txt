@@ -4,5 +4,5 @@ Pillow
 gunicorn
 supabase
 python-dotenv
-PyJWT
+PyJWT[cryptography]
 requests

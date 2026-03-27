@@ -31,8 +31,7 @@ def export_to_csv(member_id: str) -> str:
     rows = get_items(member_id)
 
     if not rows:
-        print(f"No items found for member_id: {member_id}")
-        return None
+        raise ValueError("No items found. Add items to your inventory before exporting.")
 
     safe_id = "".join(c for c in member_id if c.isalnum() or c in ('-', '_'))
     if not safe_id:

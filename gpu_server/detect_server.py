@@ -30,6 +30,9 @@ COCO_MODEL_PATH   = os.environ.get("COCO_MODEL_PATH",   "yolo12n.pt")
 PORT              = int(os.environ.get("PORT", 8000))
 DETECT_API_KEY    = os.environ.get("DETECT_API_KEY", "")
 
+# IMPORTANT: These constants MUST match backend/config.py exactly.
+# Run scripts/validate_class_sync.py to check for drift before deploying.
+# Canonical source: arcera_python/backend/config.py
 CUSTOM_CLASS_OFFSET = 100
 
 CUSTOM_CLASS_NAMES: dict[int, str] = {

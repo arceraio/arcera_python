@@ -26,19 +26,38 @@ def find_item_in_room(member_id: str, class_id: int, room_id: int) -> dict | Non
     return result.data[0] if result.data else None
 
 
+def _iou(a: list, b: list) -> float:
+    """Intersection over Union for two [x1,y1,x2,y2] boxes."""
+    ix1 = max(a[0], b[0])
+    iy1 = max(a[1], b[1])
+    ix2 = min(a[2], b[2])
+    iy2 = min(a[3], b[3])
+    inter = max(0, ix2 - ix1) * max(0, iy2 - iy1)
+    if inter == 0:
+        return 0.0
+    area_a = (a[2] - a[0]) * (a[3] - a[1])
+    area_b = (b[2] - b[0]) * (b[3] - b[1])
+    return inter / (area_a + area_b - inter)
+
+IOU_DUPLICATE_THRESHOLD = 0.5
+
 def find_duplicate(member_id: str, class_id: int, x1: int, y1: int, x2: int, y2: int):
-    coord = "{%d,%d,%d,%d}" % (x1, y1, x2, y2)  # PostgreSQL array literal
     result = (
         get_supabase()
         .table("item")
-        .select("id")
+        .select("id,coordinate")
         .eq("user_id", member_id)
         .eq("class_id", class_id)
-        .filter("coordinate", "eq", coord)
-        .limit(1)
+        .not_.is_("coordinate", "null")
         .execute()
     )
-    return result.data[0]["id"] if result.data else None
+    new_box = [x1, y1, x2, y2]
+    for row in result.data:
+        coord = row.get("coordinate")
+        if coord and len(coord) == 4:
+            if _iou(new_box, coord) >= IOU_DUPLICATE_THRESHOLD:
+                return row["id"]
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -141,15 +160,11 @@ def get_items(member_id: str):
     return rows
 
 
-def get_item_filepath(item_id: int):
-    result = (
-        get_supabase()
-        .table("item")
-        .select("original_url")
-        .eq("id", item_id)
-        .limit(1)
-        .execute()
-    )
+def get_item_filepath(item_id: int, member_id: str = None):
+    query = get_supabase().table("item").select("original_url").eq("id", item_id)
+    if member_id:
+        query = query.eq("user_id", member_id)
+    result = query.limit(1).execute()
     return result.data[0]["original_url"] if result.data else None
 
 

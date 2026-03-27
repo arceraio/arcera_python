@@ -13,10 +13,10 @@ from storage import get_signed_url, upload_bytes
 app = Flask(__name__)
 CORS(app)
 
-from config import UPLOAD_FOLDER
+from config import UPLOAD_FOLDER, MIN_STORE_CONFIDENCE
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-uploaded_file_path = {"path": None}
+_member_upload_paths: dict = {}   # member_id → local path
 
 @app.route('/', methods=['GET'])
 def health():
@@ -33,17 +33,25 @@ def supabase_health():
 
 @app.route('/upload', methods=['POST'])
 def upload():
+    try:
+        member_id = get_member_id()
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 401
     if 'image' not in request.files:
         return jsonify({"error": "No file provided."}), 400
     file = request.files['image']
     save_path = os.path.join(UPLOAD_FOLDER, file.filename)
     file.save(save_path)
-    uploaded_file_path["path"] = get_image_path(save_path)
+    _member_upload_paths[member_id] = get_image_path(save_path)
     return jsonify({"message": f"Uploaded: {file.filename}", "path": save_path})
 
 @app.route('/validate', methods=['POST'])
 def validate():
-    path = uploaded_file_path.get("path")
+    try:
+        member_id = get_member_id()
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 401
+    path = _member_upload_paths.get(member_id)
     if not path:
         return jsonify({"error": "No file uploaded yet."}), 400
     valid, message = check_file_exists(path)
@@ -51,7 +59,11 @@ def validate():
 
 @app.route('/detect', methods=['POST'])
 def detect():
-    path = uploaded_file_path.get("path")
+    try:
+        member_id = get_member_id()
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 401
+    path = _member_upload_paths.get(member_id)
     if not path:
         return jsonify({"error": "No file uploaded yet."}), 400
     valid, message = check_file_exists(path)
@@ -73,17 +85,20 @@ def store():
     data = request.get_json()
     if not data or "items" not in data:
         return jsonify({"error": "No items provided."}), 400
-    path = data.get("path") or uploaded_file_path.get("path")
+    items = [it for it in data["items"] if (it.get("confidence") or 0) >= MIN_STORE_CONFIDENCE]
+    if not items:
+        return jsonify({"error": "No items met the minimum confidence threshold."}), 422
+    path = data.get("path") or _member_upload_paths.get(member_id)
     if not path:
         return jsonify({"error": "No file path provided."}), 400
     original_storage_path = data.get("original_storage_path")
     try:
-        store_items(member_id, data["items"], path, original_storage_path=original_storage_path)
+        store_items(member_id, items, path, original_storage_path=original_storage_path)
     except ValueError as e:
         return jsonify({"error": str(e)}), 404
     if original_storage_path:
         remove_from_temp_photo(member_id, original_storage_path)
-    return jsonify({"message": f"Stored {len(data['items'])} items."})
+    return jsonify({"message": f"Stored {len(items)} items."})
 
 @app.route('/member', methods=['GET'])
 def member():
@@ -143,6 +158,12 @@ def list_items():
 
 @app.route('/crops/<member_id>/<filename>', methods=['GET'])
 def serve_crop(member_id, filename):
+    try:
+        requesting_member = get_member_id()
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 401
+    if requesting_member != member_id:
+        abort(403)
     signed = get_signed_url(f"crops/{member_id}/{filename}")
     if not signed:
         abort(404)
@@ -151,7 +172,11 @@ def serve_crop(member_id, filename):
 
 @app.route('/photo/<int:item_id>', methods=['GET'])
 def serve_photo(item_id):
-    storage_path = get_item_filepath(item_id)
+    try:
+        member_id = get_member_id()
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 401
+    storage_path = get_item_filepath(item_id, member_id=member_id)
     if not storage_path:
         abort(404)
     signed = get_signed_url(storage_path)
@@ -162,12 +187,20 @@ def serve_photo(item_id):
 
 @app.route('/items/<int:item_id>', methods=['DELETE'])
 def remove_item(item_id):
+    try:
+        get_member_id()
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 401
     db_delete_item(item_id)
     return jsonify({"message": "Deleted."})
 
 
 @app.route('/items/<int:item_id>', methods=['PUT'])
 def edit_item(item_id):
+    try:
+        get_member_id()
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 401
     data = request.get_json()
     if not data:
         return jsonify({"error": "No data provided."}), 400

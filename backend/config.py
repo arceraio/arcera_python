@@ -106,6 +106,7 @@ COCO_CLASS_WHITELIST: frozenset[int] = frozenset({
 
 # Detection thresholds passed to the remote service
 DETECTION_CONF_THRESHOLD: float = float(os.environ.get("DETECTION_CONF_THRESHOLD", 0.25))
+MIN_STORE_CONFIDENCE: float = float(os.environ.get("MIN_STORE_CONFIDENCE", 0.40))
 DETECTION_IOU_THRESHOLD: float = float(os.environ.get("DETECTION_IOU_THRESHOLD", 0.45))
 
 # ---------------------------------------------------------------------------

@@ -4,30 +4,43 @@ import jwt
 from flask import request
 from config import SUPABASE_URL, SUPABASE_JWT_SECRET
 
-_ec_public_key = None
+_ec_public_key_cache: dict = {}  # kid → key
 
 
-def _get_ec_public_key():
-    """Fetch and cache the EC public key from Supabase JWKS (ES256 projects)."""
-    global _ec_public_key
-    if _ec_public_key is None:
-        try:
-            from jwt.algorithms import ECAlgorithm
-        except ImportError:
-            raise RuntimeError(
-                "PyJWT[cryptography] is required for ES256 token verification. "
-                "Add PyJWT[cryptography] to requirements.txt."
-            )
-        jwks_url = f"{SUPABASE_URL}/auth/v1/.well-known/jwks.json"
-        with urllib.request.urlopen(jwks_url, timeout=10) as resp:
-            jwks = json.loads(resp.read())
-        for k in jwks.get("keys", []):
-            if k.get("kty") == "EC":
-                _ec_public_key = ECAlgorithm.from_jwk(json.dumps(k))
-                break
-        if _ec_public_key is None:
-            raise RuntimeError("No EC key found in Supabase JWKS.")
-    return _ec_public_key
+def _get_ec_public_key(kid: str = None):
+    """Fetch and cache EC public keys from Supabase JWKS, matched by kid.
+    Falls back to the first available key if kid is None or not found.
+    """
+    global _ec_public_key_cache
+    if kid and kid in _ec_public_key_cache:
+        return _ec_public_key_cache[kid]
+
+    try:
+        from jwt.algorithms import ECAlgorithm
+    except ImportError:
+        raise RuntimeError(
+            "PyJWT[cryptography] is required for ES256 token verification. "
+            "Add PyJWT[cryptography] to requirements.txt."
+        )
+
+    jwks_url = f"{SUPABASE_URL}/auth/v1/.well-known/jwks.json"
+    with urllib.request.urlopen(jwks_url, timeout=10) as resp:
+        jwks = json.loads(resp.read())
+
+    for k in jwks.get("keys", []):
+        if k.get("kty") == "EC":
+            k_id = k.get("kid")
+            key = ECAlgorithm.from_jwk(json.dumps(k))
+            if k_id:
+                _ec_public_key_cache[k_id] = key
+
+    if not _ec_public_key_cache:
+        raise RuntimeError("No EC key found in Supabase JWKS.")
+
+    if kid and kid in _ec_public_key_cache:
+        return _ec_public_key_cache[kid]
+
+    return next(iter(_ec_public_key_cache.values()))
 
 
 def get_member_id() -> str:
@@ -48,6 +61,7 @@ def get_member_id() -> str:
         raise ValueError(f"Malformed token: {e}")
 
     alg = unverified_header.get("alg", "")
+    kid = unverified_header.get("kid")
 
     try:
         if alg == "HS256":
@@ -60,7 +74,7 @@ def get_member_id() -> str:
                 audience="authenticated",
             )
         else:
-            public_key = _get_ec_public_key()
+            public_key = _get_ec_public_key(kid=kid)
             payload = jwt.decode(
                 token,
                 public_key,
